@@ -1,6 +1,8 @@
 # Qualia Framework v2
 
-Claude Code workflow framework for Qualia Solutions. Guides projects from setup to client handoff.
+A prompt orchestration framework for [Claude Code](https://claude.ai/code). It installs into `~/.claude/` and wraps your AI-assisted development workflow with structured planning, execution, verification, and deployment gates.
+
+It is not an application framework like Rails or Next.js. It doesn't generate code, run servers, or process data. It's an opinionated workflow layer that tells Claude how to plan, build, and verify your projects.
 
 ## Install
 
@@ -28,20 +30,58 @@ See `guide.md` for the full developer guide.
 
 ## What's Inside
 
-- **10 skills** — the commands that guide you from setup to handoff
+- **11 skills** — slash commands that guide you from setup to handoff
 - **3 agents** — planner, builder, verifier (each in fresh context)
-- **6 hooks** — session start, branch guard, env protection, deploy gate, state save, tracking sync
+- **7 hooks** — branch guard, pre-push tracking sync, env protection, migration guard, deploy gate, pre-compact state save, session start
 - **3 rules** — security, frontend, deployment
 - **4 templates** — tracking.json, state.md, project.md, plan.md
 
+## Why It Works
+
+### Goal-Backward Verification
+
+Most CI checks "did the task run." Qualia checks "does the outcome actually work." The verifier doesn't trust summaries — it greps the codebase for stubs, placeholders, unwired imports. When Claude says "I built the chat component," this catches the cases where it wrote a skeleton with `// TODO` inside.
+
+### Agent Separation
+
+Splitting planner, builder, and verifier into separate agents with separate contexts prevents the "God prompt" problem where one massive context tries to plan AND code AND test. Each agent gets fresh context. This directly addresses Claude's quality degradation curve — task 50 gets the same quality as task 1.
+
+### Production-Grade Hooks
+
+The `settings.json` hooks are real ops engineering, not theoretical:
+
+- **Pre-deploy gate** — TypeScript, lint, tests, build, and `service_role` leak scan before `vercel --prod`
+- **Branch guard** — Role-aware: owner can push to main, employees can't
+- **Migration guard** — Catches `DROP TABLE` without `IF EXISTS`, `DELETE` without `WHERE`, `CREATE TABLE` without RLS
+- **Env block** — Prevents Claude from touching `.env` files
+- **Pre-compact** — Saves state before context compression
+
+### Wave-Based Parallelization
+
+Plans are grouped into waves for parallel execution. No fancy DAG solver — the planner assigns wave numbers, the orchestrator spawns agents per wave. Pragmatic over clever.
+
+### Plans Are Prompts
+
+Plan files aren't documents that get translated into prompts — they ARE the prompts. `@file` references, explicit task actions, and verification criteria baked in. This eliminates translation loss between "what we planned" and "what Claude actually reads."
+
 ## Architecture
 
-- **Context isolation:** Each task runs in a fresh AI context. No quality degradation.
-- **Goal-backward verification:** Verifier greps the code to check if things actually work.
-- **Plans are prompts:** Plan files ARE the builder's instructions.
-- **Wave execution:** Independent tasks run in parallel.
-- **ERP integration:** `tracking.json` updated on every push, ERP reads via git.
+```
+npx qualia-framework-v2 install
+     |
+     v
+~/.claude/
+  ├── skills/          11 slash commands
+  ├── agents/          planner.md, builder.md, verifier.md
+  ├── hooks/           7 shell scripts (branch, env, migration, deploy, push, compact, session)
+  ├── rules/           security.md, frontend.md, deployment.md
+  ├── qualia-templates/ tracking.json, state.md, project.md, plan.md
+  ├── CLAUDE.md        global instructions (role-configured per team member)
+  └── statusline.sh    teal-branded 2-line status bar
+```
 
 ## For Qualia Solutions Team
 
-Stack: Next.js, React, TypeScript, Supabase, Vercel.
+Stack: Next.js 16+, React 19, TypeScript, Supabase, Vercel.
+
+Built by [Qualia Solutions](https://qualiasolutions.net) — Nicosia, Cyprus.
