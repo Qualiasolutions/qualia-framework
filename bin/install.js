@@ -30,6 +30,16 @@ const TEAM = {
     role: "EMPLOYEE",
     description: "Developer. Feature branches only. Cannot push to main or edit .env files.",
   },
+  "QS-RAMA-04": {
+    name: "Rama",
+    role: "EMPLOYEE",
+    description: "Developer. Feature branches only. Cannot push to main or edit .env files.",
+  },
+  "QS-SALLY-05": {
+    name: "Sally",
+    role: "EMPLOYEE",
+    description: "Developer. Feature branches only. Cannot push to main or edit .env files.",
+  },
 };
 
 const CLAUDE_DIR = path.join(require("os").homedir(), ".claude");
