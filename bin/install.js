@@ -253,6 +253,16 @@ async function main() {
   };
   fs.writeFileSync(configFile, JSON.stringify(config, null, 2) + "\n");
 
+  // ─── ERP API key (for report uploads) ──────────────────
+  log(`${WHITE}ERP integration${RESET}`);
+  const erpKeyFile = path.join(CLAUDE_DIR, ".erp-api-key");
+  if (!fs.existsSync(erpKeyFile)) {
+    fs.writeFileSync(erpKeyFile, "qualia-claude-2026", { mode: 0o600 });
+    ok(".erp-api-key (created)");
+  } else {
+    ok(".erp-api-key (exists)");
+  }
+
   // ─── Configure settings.json ───────────────────────────
   console.log("");
   log(`${WHITE}Configuring settings.json...${RESET}`);

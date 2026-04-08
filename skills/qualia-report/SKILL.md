@@ -5,7 +5,7 @@ description: "Generate session report and commit to repo. Mandatory before clock
 
 # /qualia-report — Session Report
 
-Generate a concise report of what was done. Committed to git for the ERP to read.
+Generate a concise report of what was done. Committed to git and uploaded to the ERP for clock-out.
 
 ## Process
 
@@ -69,7 +69,28 @@ git commit -m "report: session {YYYY-MM-DD}"
 git push
 ```
 
-### 5. Update State
+### 5. Upload to ERP
+
+**This step is MANDATORY** — the clock-out modal requires the report to be uploaded.
+
+```bash
+ERP_URL="https://portal.qualiasolutions.net"
+API_KEY=$(cat ~/.claude/.erp-api-key 2>/dev/null)
+REPORT_FILE=".planning/reports/report-{date}.md"
+EMAIL=$(git config user.email)
+PROJECT=$(basename $(pwd))
+
+curl -s -X POST "$ERP_URL/api/claude/report-upload" \
+  -H "X-API-Key: $API_KEY" \
+  -F "file=@$REPORT_FILE" \
+  -F "employee_email=$EMAIL" \
+  -F "project_name=$PROJECT"
+```
+
+If the upload succeeds, print: "Report uploaded to ERP. You can now clock out."
+If it fails (no API key, network error), print the error and tell the employee to ask Fawzi.
+
+### 6. Update State
 
 ```bash
 node ~/.claude/bin/state.js transition --to activity --notes "Session report generated"
