@@ -334,6 +334,11 @@ async function main() {
         hooks: [
           {
             type: "command",
+            command: `${hd}/auto-update.sh`,
+            timeout: 5,
+          },
+          {
+            type: "command",
             if: "Bash(git push*)",
             command: `${hd}/branch-guard.sh`,
             timeout: 10,
@@ -424,7 +429,7 @@ async function main() {
 
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 
-  ok("Hooks: branch-guard, pre-push, env-block, migration-guard, deploy-gate, pre-compact");
+  ok("Hooks: auto-update, branch-guard, pre-push, env-block, migration-guard, deploy-gate, pre-compact");
   ok("Status line + spinner configured");
   ok("Environment variables + permissions");
 
@@ -435,11 +440,11 @@ async function main() {
   console.log(`  ${WHITE}${member.name}${RESET} ${DIM}(${member.role})${RESET}`);
   console.log(`  Skills:       ${WHITE}${skills.length}${RESET}`);
   console.log(`  Agents:       ${WHITE}3${RESET} ${DIM}(planner, builder, verifier)${RESET}`);
-  console.log(`  Hooks:        ${WHITE}6${RESET} ${DIM}(branch-guard, pre-push, env-block, migration-guard, deploy-gate, pre-compact)${RESET}`);
-  console.log(`  Rules:        ${WHITE}3${RESET} ${DIM}(security, frontend, deployment)${RESET}`);
+  console.log(`  Hooks:        ${WHITE}7${RESET} ${DIM}(auto-update, branch-guard, pre-push, env-block, migration-guard, deploy-gate, pre-compact)${RESET}`);
+  console.log(`  Rules:        ${WHITE}${fs.readdirSync(rulesDir).length}${RESET} ${DIM}(security, frontend, design-reference, deployment)${RESET}`);
   console.log(`  Scripts:      ${WHITE}1${RESET} ${DIM}(state.js — state machine)${RESET}`);
   console.log(`  Knowledge:    ${WHITE}3${RESET} ${DIM}(patterns, fixes, client prefs)${RESET}`);
-  console.log(`  Templates:    ${WHITE}4${RESET}`);
+  console.log(`  Templates:    ${WHITE}${fs.readdirSync(tmplDir).length}${RESET}`);
   console.log(`  Status line:  ${GREEN}✓${RESET}`);
   console.log(`  CLAUDE.md:    ${GREEN}✓${RESET} ${DIM}(${member.role})${RESET}`);
 
