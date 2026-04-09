@@ -170,12 +170,11 @@ async function main() {
   // ─── Status line ───────────────────────────────────────
   log(`${WHITE}Status line${RESET}`);
   try {
-    const slDest = path.join(CLAUDE_DIR, "statusline.sh");
-    copy(path.join(FRAMEWORK_DIR, "statusline.sh"), slDest);
-    fs.chmodSync(slDest, 0o755);
-    ok("statusline.sh");
+    const slDest = path.join(CLAUDE_DIR, "bin", "statusline.js");
+    copy(path.join(FRAMEWORK_DIR, "bin", "statusline.js"), slDest);
+    ok("statusline.js");
   } catch (e) {
-    warn(`statusline.sh — ${e.message}`);
+    warn(`statusline.js — ${e.message}`);
   }
 
   // ─── Templates ─────────────────────────────────────────
@@ -224,6 +223,11 @@ async function main() {
     );
     fs.chmodSync(path.join(binDest, "qualia-ui.js"), 0o755);
     ok("qualia-ui.js (cosmetics library)");
+    copy(
+      path.join(FRAMEWORK_DIR, "bin", "statusline.js"),
+      path.join(binDest, "statusline.js")
+    );
+    ok("statusline.js (status bar renderer)");
   } catch (e) {
     warn(`scripts — ${e.message}`);
   }
@@ -303,7 +307,7 @@ async function main() {
   // Status line
   settings.statusLine = {
     type: "command",
-    command: "~/.claude/statusline.sh",
+    command: `node "${path.join(CLAUDE_DIR, "bin", "statusline.js")}"`,
   };
 
   // Spinner
@@ -424,18 +428,6 @@ async function main() {
         ],
       },
     ],
-    SubagentStart: [
-      {
-        matcher: ".*",
-        hooks: [
-          {
-            type: "command",
-            command:
-              'echo \'{"additionalContext": "◆ Qualia agent spawned"}\'',
-          },
-        ],
-      },
-    ],
   };
 
   // Permissions
@@ -448,8 +440,6 @@ async function main() {
       "Read(./secrets/**)",
     ];
   }
-
-  settings.effortLevel = "high";
 
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 
@@ -467,7 +457,7 @@ async function main() {
   console.log(`  Agents:       ${WHITE}${agentCount}${RESET} ${DIM}(planner, builder, verifier, qa-browser)${RESET}`);
   console.log(`  Hooks:        ${WHITE}8${RESET} ${DIM}(session-start, auto-update, branch-guard, pre-push, env-block, migration-guard, deploy-gate, pre-compact)${RESET}`);
   console.log(`  Rules:        ${WHITE}${fs.readdirSync(rulesDir).length}${RESET} ${DIM}(security, frontend, design-reference, deployment)${RESET}`);
-  console.log(`  Scripts:      ${WHITE}2${RESET} ${DIM}(state.js, qualia-ui.js)${RESET}`);
+  console.log(`  Scripts:      ${WHITE}3${RESET} ${DIM}(state.js, qualia-ui.js, statusline.js)${RESET}`);
   console.log(`  Knowledge:    ${WHITE}3${RESET} ${DIM}(patterns, fixes, client prefs)${RESET}`);
   console.log(`  Templates:    ${WHITE}${fs.readdirSync(tmplDir).length}${RESET}`);
   console.log(`  Status line:  ${GREEN}✓${RESET}`);

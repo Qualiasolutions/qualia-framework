@@ -20,7 +20,7 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { execSync } = require("child_process");
+const { spawnSync } = require("child_process");
 
 // ─── Colors ──────────────────────────────────────────────
 const TEAL = "\x1b[38;2;0;206;209m";
@@ -64,11 +64,14 @@ const ACTIONS = {
 // ─── State Reading ───────────────────────────────────────
 function readState() {
   try {
-    const out = execSync(`node ${path.join(os.homedir(), ".claude", "bin", "state.js")} check 2>/dev/null`, {
+    const statePath = path.join(os.homedir(), ".claude", "bin", "state.js");
+    const r = spawnSync(process.execPath, [statePath, "check"], {
       encoding: "utf8",
       timeout: 3000,
+      stdio: ["ignore", "pipe", "ignore"],
     });
-    return JSON.parse(out);
+    if (r.status !== 0 || !r.stdout) return null;
+    return JSON.parse(r.stdout);
   } catch {
     return null;
   }

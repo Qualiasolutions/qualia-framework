@@ -29,9 +29,27 @@ options:
     description: "This is a subagent role, not a slash command. Creates agents/{name}.md."
 ```
 
-**Framework** → target: `/home/qualia/Projects/qualia/qualia-framework-v2/skills/{name}/SKILL.md`
+### 1a. Resolve framework directory
+
+If the user chose **Framework skill** or a framework-scoped **Agent**, resolve `${FRAMEWORK_DIR}` — the checkout path of this user's qualia-framework-v2 repo — BEFORE computing any target paths. Never hardcode `/home/<user>/...`; different teammates and operating systems have different paths.
+
+```bash
+# Priority order: env var → git detection → ask user
+FRAMEWORK_DIR="${QUALIA_FRAMEWORK_DIR:-}"
+if [ -z "$FRAMEWORK_DIR" ] && git -C . rev-parse --show-toplevel >/dev/null 2>&1; then
+  ORIGIN=$(git -C . config --get remote.origin.url 2>/dev/null)
+  case "$ORIGIN" in
+    *qualia-framework-v2*) FRAMEWORK_DIR=$(git -C . rev-parse --show-toplevel) ;;
+  esac
+fi
+echo "${FRAMEWORK_DIR:-UNRESOLVED}"
+```
+
+If the command prints `UNRESOLVED`, ask the user: *"Where is your qualia-framework-v2 checkout? (absolute path, or type 'local' to save only to ~/.claude/)"*. If they type `local`, downgrade the scope to Local. Otherwise store the answer as `${FRAMEWORK_DIR}` for the rest of the session.
+
+**Framework** → target: `${FRAMEWORK_DIR}/skills/{name}/SKILL.md`
 **Local** → target: `~/.claude/skills/{name}/SKILL.md`
-**Agent** → target: `/home/qualia/Projects/qualia/qualia-framework-v2/agents/{name}.md` (framework) or `~/.claude/agents/{name}.md` (local)
+**Agent** → target: `${FRAMEWORK_DIR}/agents/{name}.md` (framework) or `~/.claude/agents/{name}.md` (local)
 
 ### 2. Gather Requirements
 
@@ -119,10 +137,11 @@ Fix any ambiguity the test agent found.
 
 ```bash
 # Framework skill — copy to local .claude for immediate testing
-cp /home/qualia/Projects/qualia/qualia-framework-v2/skills/{name}/SKILL.md ~/.claude/skills/{name}/SKILL.md
+mkdir -p ~/.claude/skills/{name}
+cp "${FRAMEWORK_DIR}/skills/{name}/SKILL.md" ~/.claude/skills/{name}/SKILL.md
 
 # Verify it parses
-node -e "const fs=require('fs');const c=fs.readFileSync('/home/qualia/.claude/skills/{name}/SKILL.md','utf8');if(!c.includes('---'))throw new Error('missing frontmatter');if(!c.match(/^name:\s*\S/m))throw new Error('missing name');if(!c.match(/^description:\s*\S/m))throw new Error('missing description');console.log('OK')"
+node -e "const fs=require('fs');const os=require('os');const path=require('path');const c=fs.readFileSync(path.join(os.homedir(),'.claude/skills/{name}/SKILL.md'),'utf8');if(!c.includes('---'))throw new Error('missing frontmatter');if(!c.match(/^name:\s*\S/m))throw new Error('missing name');if(!c.match(/^description:\s*\S/m))throw new Error('missing description');console.log('OK')"
 ```
 
 ### 7. Commit (framework skills only)
@@ -131,7 +150,7 @@ Do NOT commit unless the user explicitly says "commit" or "ship it".
 
 When they do:
 ```bash
-cd /home/qualia/Projects/qualia/qualia-framework-v2
+cd "${FRAMEWORK_DIR}"
 git add skills/{name}/
 git commit -m "feat: add /{name} skill"
 ```

@@ -50,12 +50,16 @@ See `guide.md` for the full developer guide.
 - **19 skills** — slash commands from setup to handoff, plus debugging, design, review, knowledge, session management, and skill authoring
 - **4 agents** — planner, builder, verifier, qa-browser (each in fresh context)
 - **8 hooks** — session start, branch guard, pre-push tracking sync, env protection, migration guard, deploy gate, pre-compact state save, auto-update (all Node.js — cross-platform)
-- **3 rules** — security, frontend, deployment
+- **4 rules** — security, frontend, design-reference, deployment
 - **5 templates** — tracking.json, state.md, project.md, plan.md, DESIGN.md
 
 ## Supported Platforms
 
-Works on **Windows 10/11, macOS, and Linux** (all distros). The only requirement is Node.js 18+. No Git Bash, no WSL, no bash dependency — every hook is pure Node.js.
+Works on **Windows 10/11, macOS, and Linux**. Requires Node.js 18+ and Claude Code.
+
+- Every hook and the status line are pure Node.js — no external bash, jq, or GNU coreutils required.
+- Skills are executed by Claude Code's own Bash tool (which Claude Code provides on all platforms, including Windows).
+- Tested on Fedora, EndeavourOS, macOS, and Windows 10/11.
 
 ## Why It Works
 
@@ -69,7 +73,7 @@ Splitting planner, builder, and verifier into separate agents with separate cont
 
 ### Production-Grade Hooks
 
-The `settings.json` hooks are real ops engineering, not theoretical:
+All 8 hooks are real ops engineering, not theoretical. Highlights:
 
 - **Pre-deploy gate** — TypeScript, lint, tests, build, and `service_role` leak scan before `vercel --prod`
 - **Branch guard** — Role-aware: owner can push to main, employees can't
@@ -100,7 +104,7 @@ npx qualia-framework-v2 install
   ├── agents/          planner.md, builder.md, verifier.md, qa-browser.md
   ├── hooks/           8 Node.js hooks — cross-platform (no bash dependency)
   ├── bin/             state.js (state machine) + qualia-ui.js (cosmetics library)
-  ├── knowledge/       learned-patterns.md, common-fixes.md, client-prefs.md (auto-loaded by skills)
+  ├── knowledge/       learned-patterns.md, common-fixes.md, client-prefs.md (loaded by plan/debug/new)
   ├── rules/           security.md, frontend.md, deployment.md
   ├── qualia-templates/ tracking.json, state.md, project.md, plan.md, DESIGN.md
   ├── CLAUDE.md        global instructions (role-configured per team member)

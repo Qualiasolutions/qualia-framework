@@ -94,13 +94,21 @@ function cmdUpdate() {
   console.log("");
 
   try {
-    // Pull latest and reinstall with saved code
-    execSync(
-      `npx qualia-framework-v2@latest install <<< "${cfg.code}"`,
-      { stdio: "inherit", shell: true, timeout: 60000 }
-    );
+    const { spawnSync } = require("child_process");
+    const r = spawnSync("npx", ["qualia-framework-v2@latest", "install"], {
+      input: cfg.code + "\n",
+      stdio: ["pipe", "inherit", "inherit"],
+      shell: process.platform === "win32",  // npx is a .cmd shim on Windows — must go through shell
+      timeout: 120000,
+      encoding: "utf8",
+    });
+    if (r.status !== 0) {
+      console.log(`  ${RED}✗${RESET} Update failed. Run manually: npx qualia-framework-v2@latest install`);
+      process.exit(1);
+    }
   } catch (e) {
-    console.log(`  ${RED}✗${RESET} Update failed. Run manually: npx qualia-framework-v2@latest install`);
+    console.log(`  ${RED}✗${RESET} Update failed: ${e.message}`);
+    console.log(`  ${DIM}Run manually:${RESET} npx qualia-framework-v2@latest install`);
     process.exit(1);
   }
 }
