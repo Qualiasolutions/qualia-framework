@@ -80,14 +80,32 @@ function askCode() {
   });
 }
 
+// ─── Resolve team code (tolerates case + O/0 typo in suffix) ─
+// Accepts "qs-fawzi-01", "QS-FAWZI-01", "QS-FAWZI-O1" (letter O in the
+// numeric suffix), and returns the canonical key if found, else null.
+// Only normalizes O→0 in the segment AFTER the last dash — "QS-MOAYAD-03"
+// contains a real "O" in the name and must not be mangled.
+function resolveTeamCode(input) {
+  const normalized = String(input || "").trim().toUpperCase();
+  if (TEAM[normalized]) return normalized;
+  const fuzzy = normalized.replace(
+    /-([^-]*)$/,
+    (_, suffix) => `-${suffix.replace(/O/g, "0")}`
+  );
+  if (TEAM[fuzzy]) return fuzzy;
+  return null;
+}
+
 // ─── Main ────────────────────────────────────────────────
 async function main() {
-  const code = await askCode();
-  const member = TEAM[code];
+  const rawCode = await askCode();
+  const code = resolveTeamCode(rawCode);
+  const member = code ? TEAM[code] : null;
 
   if (!member) {
     console.log("");
-    log(`${RED}✗${RESET} Invalid code. Get your install code from Fawzi.`);
+    log(`${RED}✗${RESET} Invalid code: "${rawCode}". Get your install code from Fawzi.`);
+    log(`${DIM}  Tip: codes use digit zero, not letter O. Format: QS-NAME-01${RESET}`);
     console.log("");
     process.exit(1);
   }
