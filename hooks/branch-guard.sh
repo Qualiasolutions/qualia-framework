@@ -1,11 +1,20 @@
 #!/bin/bash
 # Block non-OWNER push to main/master
+# Reads role from ~/.claude/.qualia-config.json (machine-readable source of truth)
 
 BRANCH=$(git branch --show-current 2>/dev/null)
-ROLE=$(grep -m1 "^## Role:" ~/.claude/CLAUDE.md 2>/dev/null | sed 's/^## Role: *//')
+CONFIG="$HOME/.claude/.qualia-config.json"
+
+if [ ! -f "$CONFIG" ]; then
+  echo "BLOCKED: ~/.claude/.qualia-config.json missing. Run: npx qualia-framework-v2 install"
+  exit 1
+fi
+
+# Extract role without jq dependency (installers may not have jq)
+ROLE=$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('$CONFIG','utf8')).role||'')}catch{}" 2>/dev/null)
 
 if [ -z "$ROLE" ]; then
-  echo "BLOCKED: Cannot determine role — ~/.claude/CLAUDE.md missing or malformed. Defaulting to deny."
+  echo "BLOCKED: Cannot determine role from $CONFIG. Defaulting to deny."
   exit 1
 fi
 

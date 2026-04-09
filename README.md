@@ -47,11 +47,11 @@ See `guide.md` for the full developer guide.
 
 ## What's Inside
 
-- **18 skills** — slash commands from setup to handoff, plus debugging, design, review, knowledge, and session management
-- **3 agents** — planner, builder, verifier (each in fresh context)
-- **7 hooks** — branch guard, pre-push tracking sync, env protection, migration guard, deploy gate, pre-compact state save, session start
+- **19 skills** — slash commands from setup to handoff, plus debugging, design, review, knowledge, session management, and skill authoring
+- **4 agents** — planner, builder, verifier, qa-browser (each in fresh context)
+- **8 hooks** — session start, branch guard, pre-push tracking sync, env protection, migration guard, deploy gate, pre-compact state save, auto-update
 - **3 rules** — security, frontend, deployment
-- **4 templates** — tracking.json, state.md, project.md, plan.md
+- **5 templates** — tracking.json, state.md, project.md, plan.md, DESIGN.md
 
 ## Why It Works
 
@@ -92,13 +92,13 @@ npx qualia-framework-v2 install
      |
      v
 ~/.claude/
-  ├── skills/          18 slash commands
-  ├── agents/          planner.md, builder.md, verifier.md
-  ├── hooks/           7 shell scripts (branch, env, migration, deploy, push, compact, session)
+  ├── skills/          19 slash commands
+  ├── agents/          planner.md, builder.md, verifier.md, qa-browser.md
+  ├── hooks/           8 shell scripts (session-start, branch, env, migration, deploy, push, compact, auto-update)
   ├── bin/             state.js (state machine with precondition enforcement)
-  ├── knowledge/       learned-patterns.md, common-fixes.md, client-prefs.md
+  ├── knowledge/       learned-patterns.md, common-fixes.md, client-prefs.md (auto-loaded by skills)
   ├── rules/           security.md, frontend.md, deployment.md
-  ├── qualia-templates/ tracking.json, state.md, project.md, plan.md
+  ├── qualia-templates/ tracking.json, state.md, project.md, plan.md, DESIGN.md
   ├── CLAUDE.md        global instructions (role-configured per team member)
   └── statusline.sh    teal-branded 2-line status bar
 ```

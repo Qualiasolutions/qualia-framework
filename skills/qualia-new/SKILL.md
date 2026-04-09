@@ -161,6 +161,14 @@ options:
 
 If client project, ask: **"What's the client's name?"** (free text, no AskUserQuestion)
 
+After capturing the client name, check for saved preferences:
+
+```bash
+cat ~/.claude/knowledge/client-prefs.md 2>/dev/null
+```
+
+If there's an entry for this client, show it to the user: *"I have notes on {client} — {preferences summary}. Applying these to the project defaults unless you say otherwise."* Then use those preferences in Step 8a (Design System) and Step 9 (Roadmap).
+
 ### Step 6. Confirm & Scaffold
 
 Present a summary:
@@ -225,7 +233,7 @@ Create Supabase project (via MCP or manual).
 
 ### Step 8a. Create Design System
 
-Generate **`.planning/DESIGN.md`** using `templates/DESIGN.md` as the template.
+Generate **`.planning/DESIGN.md`** using `~/.claude/qualia-templates/DESIGN.md` as the template.
 
 Fill in based on the design direction chosen in Step 3:
 

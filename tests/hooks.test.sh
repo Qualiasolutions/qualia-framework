@@ -95,19 +95,31 @@ fi
 echo ""
 echo "pre-push:"
 
-if grep -q 'command -v python3' "$HOOKS_DIR/pre-push.sh"; then
-  echo "  ✓ checks for python3 availability"
+if grep -q 'command -v node' "$HOOKS_DIR/pre-push.sh"; then
+  echo "  ✓ checks for node availability"
   PASS=$((PASS + 1))
 else
-  echo "  ✗ missing python3 check"
+  echo "  ✗ missing node check"
   FAIL=$((FAIL + 1))
 fi
 
-if grep -q 'qualia-push-err' "$HOOKS_DIR/pre-push.sh"; then
-  echo "  ✓ captures python3 errors"
+if grep -q 'tracking sync failed' "$HOOKS_DIR/pre-push.sh"; then
+  echo "  ✓ captures tracking sync errors"
   PASS=$((PASS + 1))
 else
-  echo "  ✗ missing python3 error capture"
+  echo "  ✗ missing tracking sync error capture"
+  FAIL=$((FAIL + 1))
+fi
+
+# --- branch-guard reads from .qualia-config.json ---
+echo ""
+echo "branch-guard config source:"
+
+if grep -q 'qualia-config.json' "$HOOKS_DIR/branch-guard.sh"; then
+  echo "  ✓ reads role from .qualia-config.json"
+  PASS=$((PASS + 1))
+else
+  echo "  ✗ not reading from .qualia-config.json"
   FAIL=$((FAIL + 1))
 fi
 

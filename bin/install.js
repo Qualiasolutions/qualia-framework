@@ -228,7 +228,7 @@ async function main() {
   const knowledgeDir = path.join(CLAUDE_DIR, "knowledge");
   if (!fs.existsSync(knowledgeDir)) fs.mkdirSync(knowledgeDir, { recursive: true });
   const knowledgeFiles = {
-    "learned-patterns.md": "# Learned Patterns\n\nPatterns discovered across projects. Updated by `/qualia-evolve` and manual notes.\n",
+    "learned-patterns.md": "# Learned Patterns\n\nPatterns discovered across projects. Updated by `/qualia-learn` and manual notes.\n",
     "common-fixes.md": "# Common Fixes\n\nRecurring issues and their solutions.\n",
     "client-prefs.md": "# Client Preferences\n\nClient-specific preferences, design choices, and requirements.\n",
   };
@@ -328,6 +328,18 @@ async function main() {
   // Hooks — full system
   const hd = path.join(CLAUDE_DIR, "hooks");
   settings.hooks = {
+    SessionStart: [
+      {
+        matcher: ".*",
+        hooks: [
+          {
+            type: "command",
+            command: `${hd}/session-start.sh`,
+            timeout: 5,
+          },
+        ],
+      },
+    ],
     PreToolUse: [
       {
         matcher: "Bash",
@@ -351,6 +363,13 @@ async function main() {
             timeout: 15,
             statusMessage: "◆ Syncing tracking...",
           },
+          {
+            type: "command",
+            if: "Bash(vercel --prod*)",
+            command: `${hd}/pre-deploy-gate.sh`,
+            timeout: 120,
+            statusMessage: "◆ Running quality gates...",
+          },
         ],
       },
       {
@@ -369,20 +388,6 @@ async function main() {
             command: `${hd}/migration-guard.sh`,
             timeout: 10,
             statusMessage: "◆ Checking migration safety...",
-          },
-        ],
-      },
-    ],
-    PostToolUse: [
-      {
-        matcher: "Bash",
-        hooks: [
-          {
-            type: "command",
-            if: "Bash(vercel --prod*)",
-            command: `${hd}/pre-deploy-gate.sh`,
-            timeout: 120,
-            statusMessage: "◆ Running quality gates...",
           },
         ],
       },
@@ -429,7 +434,7 @@ async function main() {
 
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 
-  ok("Hooks: auto-update, branch-guard, pre-push, env-block, migration-guard, deploy-gate, pre-compact");
+  ok("Hooks: session-start, auto-update, branch-guard, pre-push, env-block, migration-guard, deploy-gate, pre-compact");
   ok("Status line + spinner configured");
   ok("Environment variables + permissions");
 
@@ -439,8 +444,9 @@ async function main() {
   console.log(`${DIM}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}`);
   console.log(`  ${WHITE}${member.name}${RESET} ${DIM}(${member.role})${RESET}`);
   console.log(`  Skills:       ${WHITE}${skills.length}${RESET}`);
-  console.log(`  Agents:       ${WHITE}3${RESET} ${DIM}(planner, builder, verifier)${RESET}`);
-  console.log(`  Hooks:        ${WHITE}7${RESET} ${DIM}(auto-update, branch-guard, pre-push, env-block, migration-guard, deploy-gate, pre-compact)${RESET}`);
+  const agentCount = fs.readdirSync(agentsDir).filter(f => f.endsWith('.md')).length;
+  console.log(`  Agents:       ${WHITE}${agentCount}${RESET} ${DIM}(planner, builder, verifier, qa-browser)${RESET}`);
+  console.log(`  Hooks:        ${WHITE}8${RESET} ${DIM}(session-start, auto-update, branch-guard, pre-push, env-block, migration-guard, deploy-gate, pre-compact)${RESET}`);
   console.log(`  Rules:        ${WHITE}${fs.readdirSync(rulesDir).length}${RESET} ${DIM}(security, frontend, design-reference, deployment)${RESET}`);
   console.log(`  Scripts:      ${WHITE}1${RESET} ${DIM}(state.js — state machine)${RESET}`);
   console.log(`  Knowledge:    ${WHITE}3${RESET} ${DIM}(patterns, fixes, client prefs)${RESET}`);

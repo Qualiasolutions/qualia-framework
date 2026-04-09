@@ -15,6 +15,16 @@ Systematic debugging. Don't guess — gather symptoms, confirm diagnosis, then f
 
 ## Interactive Mode (Default)
 
+### 0. Check Known Fixes First
+
+Before gathering symptoms, check if we've seen this before:
+
+```bash
+cat ~/.claude/knowledge/common-fixes.md 2>/dev/null
+```
+
+If the user's description matches a known fix, suggest it first: *"I've seen this before — check {fix title}. Want to try that before we dig deeper?"* Only proceed to full investigation if the known fix doesn't apply.
+
 ### 1. Gather Symptoms
 
 Ask:

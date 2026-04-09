@@ -81,7 +81,13 @@ Every task MUST have these three fields with concrete content:
 - **Action:** At least one concrete instruction — not just "implement auth". Reference specific functions, components, or patterns. "Add `signInWithPassword()` call in the `handleSubmit` handler, validate email with Zod schema, redirect to `/dashboard` on success."
 - **Done when:** Testable, not fuzzy. Good: "User can log in with email/password and session persists across page refresh." Bad: "Auth works." Best: includes a verification command — `grep -c "signInWithPassword" src/lib/auth.ts` returns non-zero.
 
-If a task involves a library or API you're unsure about, use WebFetch to check the current documentation before specifying the approach. Don't guess at APIs.
+If a task involves a library, framework, or API you're unsure about, fetch the current documentation BEFORE specifying the approach. Don't guess at APIs.
+
+Preferred order:
+1. **Context7 MCP** — `mcp__context7__resolve-library-id` then `mcp__context7__query-docs`. Fast, current, structured. Use for: React, Next.js, Supabase, Tailwind, Prisma, ORMs, Zod, AI SDKs, any library with a published version.
+2. **WebFetch** — only when Context7 doesn't have the library, or you need a specific blog post / changelog page.
+
+Your training data is often stale. A two-second lookup is cheaper than a wrong task specification.
 
 **Self-check:** Before returning the plan, verify every task has specific file paths, concrete actions, and testable done-when criteria. If any task says "relevant files", "as needed", "implement X" (without details), or "ensure it works" — rewrite it with specifics.
 
@@ -92,7 +98,7 @@ When a phase involves frontend work (pages, components, layouts, UI):
 1. **Check for `.planning/DESIGN.md`** — if it exists, reference it in task Context fields: `@.planning/DESIGN.md`
 2. **If no DESIGN.md and this is Phase 1** — add a Task 1 (Wave 1) to create it:
    - Generate `.planning/DESIGN.md` from the design direction in PROJECT.md
-   - Use the template at `templates/DESIGN.md` — fill in: palette, typography (distinctive fonts), spacing, motion approach, component patterns
+   - Use the template at `~/.claude/qualia-templates/DESIGN.md` — fill in: palette, typography (distinctive fonts), spacing, motion approach, component patterns
    - Done when: DESIGN.md exists with concrete CSS variable values (not placeholders)
 3. **Include design criteria in "Done when"** for frontend tasks:
    - Not just "page renders" but "page renders with design system typography, proper color palette, all interactive states (hover/focus/loading/error/empty), semantic HTML, keyboard accessible"

@@ -14,13 +14,17 @@ Spawn a planner agent to break the current phase into executable tasks.
 
 ## Process
 
-### 1. Determine Phase
+### 1. Determine Phase & Load Knowledge
 
 ```bash
 cat .planning/STATE.md 2>/dev/null
+cat ~/.claude/knowledge/learned-patterns.md 2>/dev/null
+cat ~/.claude/knowledge/client-prefs.md 2>/dev/null
 ```
 
 If no phase number given, use the current phase from STATE.md.
+If any learned patterns apply to this phase's work, pass them to the planner in the spawn prompt under a `## Relevant Learnings` section.
+If this is a client project and `client-prefs.md` has an entry for the client, include those preferences in the planner context.
 
 ### 2. Spawn Planner (Fresh Context)
 
