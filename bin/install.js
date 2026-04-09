@@ -146,10 +146,20 @@ async function main() {
   const hooksSource = path.join(FRAMEWORK_DIR, "hooks");
   const hooksDest = path.join(CLAUDE_DIR, "hooks");
   if (!fs.existsSync(hooksDest)) fs.mkdirSync(hooksDest, { recursive: true });
+  // Clean up legacy .sh hooks from previous v2.5/v2.6 installs so no orphans
+  // remain on disk after upgrading to the pure-Node v2.7+ hooks.
+  try {
+    for (const f of fs.readdirSync(hooksDest)) {
+      if (f.endsWith(".sh")) {
+        try { fs.unlinkSync(path.join(hooksDest, f)); } catch {}
+      }
+    }
+  } catch {}
   for (const file of fs.readdirSync(hooksSource)) {
     try {
       const dest = path.join(hooksDest, file);
       copy(path.join(hooksSource, file), dest);
+      // chmod is a no-op on Windows but harmless
       fs.chmodSync(dest, 0o755);
       ok(file);
     } catch (e) {
@@ -331,8 +341,11 @@ async function main() {
     ],
   };
 
-  // Hooks — full system
+  // Hooks — pure Node.js, cross-platform (Windows/macOS/Linux).
+  // Every hook command is `node <absolute-path-to-hook.js>` which avoids the
+  // bash/Git Bash requirement on Windows.
   const hd = path.join(CLAUDE_DIR, "hooks");
+  const nodeCmd = (hookFile) => `node "${path.join(hd, hookFile)}"`;
   settings.hooks = {
     SessionStart: [
       {
@@ -340,7 +353,7 @@ async function main() {
         hooks: [
           {
             type: "command",
-            command: `${hd}/session-start.sh`,
+            command: nodeCmd("session-start.js"),
             timeout: 5,
           },
         ],
@@ -352,28 +365,28 @@ async function main() {
         hooks: [
           {
             type: "command",
-            command: `${hd}/auto-update.sh`,
+            command: nodeCmd("auto-update.js"),
             timeout: 5,
           },
           {
             type: "command",
             if: "Bash(git push*)",
-            command: `${hd}/branch-guard.sh`,
+            command: nodeCmd("branch-guard.js"),
             timeout: 10,
             statusMessage: "◆ Checking branch permissions...",
           },
           {
             type: "command",
             if: "Bash(git push*)",
-            command: `${hd}/pre-push.sh`,
+            command: nodeCmd("pre-push.js"),
             timeout: 15,
             statusMessage: "◆ Syncing tracking...",
           },
           {
             type: "command",
             if: "Bash(vercel --prod*)",
-            command: `${hd}/pre-deploy-gate.sh`,
-            timeout: 120,
+            command: nodeCmd("pre-deploy-gate.js"),
+            timeout: 180,
             statusMessage: "◆ Running quality gates...",
           },
         ],
@@ -384,14 +397,14 @@ async function main() {
           {
             type: "command",
             if: "Edit(*.env*)|Write(*.env*)",
-            command: `${hd}/block-env-edit.sh`,
+            command: nodeCmd("block-env-edit.js"),
             timeout: 5,
             statusMessage: "◆ Checking file permissions...",
           },
           {
             type: "command",
             if: "Edit(*migration*)|Write(*migration*)|Edit(*.sql)|Write(*.sql)",
-            command: `${hd}/migration-guard.sh`,
+            command: nodeCmd("migration-guard.js"),
             timeout: 10,
             statusMessage: "◆ Checking migration safety...",
           },
@@ -404,7 +417,7 @@ async function main() {
         hooks: [
           {
             type: "command",
-            command: `${hd}/pre-compact.sh`,
+            command: nodeCmd("pre-compact.js"),
             timeout: 15,
             statusMessage: "◆ Saving state...",
           },
