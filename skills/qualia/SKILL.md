@@ -52,20 +52,17 @@ Use the state.js JSON output plus gathered context:
 
 ### 3. Display
 
-**Clear next step:**
-```
-◆ QUALIA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Project    {name}
-  Phase      {N} of {total} — {name}
-  Status     {status}
-  Progress   {bar} {percent}%
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  → Run: {next_command from state.js}
+**Clear next step** (use the UI helper — it reads state.js itself):
+```bash
+node ~/.claude/bin/qualia-ui.js banner router
+node ~/.claude/bin/qualia-ui.js next "{next_command from state.js}"
 ```
 
 **Ambiguous situation (multiple options):**
+Print the banner first, then use plain markdown for the options:
+```bash
+node ~/.claude/bin/qualia-ui.js banner router
+```
 ```
 ## Where You Are
 {1-2 sentences}
@@ -78,6 +75,13 @@ Use the state.js JSON output plus gathered context:
 1. **{option}** — {what}
 2. **{option}** — {what}
 3. **{option}** — {what}
+```
+
+**Blocker detected** (gap-limit, bug-loop, employee escalation):
+```bash
+node ~/.claude/bin/qualia-ui.js banner router
+node ~/.claude/bin/qualia-ui.js fail "{blocker description}"
+node ~/.claude/bin/qualia-ui.js warn "Escalate to Fawzi or re-plan from scratch"
 ```
 
 User can respond with a number, "just do it", or natural language.

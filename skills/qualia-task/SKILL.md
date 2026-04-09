@@ -43,13 +43,11 @@ If "Large" — suggest `/qualia-plan` instead. Ask if they want to proceed anywa
 
 Write a quick task spec (don't save to file, just confirm with user):
 
-```
-◆ QUALIA ► TASK
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  What:    {what to build}
-  Files:   {files to create/modify}
-  Done:    {what "done" looks like}
+```bash
+node ~/.claude/bin/qualia-ui.js banner task
+node ~/.claude/bin/qualia-ui.js info "What: {what to build}"
+node ~/.claude/bin/qualia-ui.js info "Files: {files to create/modify}"
+node ~/.claude/bin/qualia-ui.js info "Done: {what done looks like}"
 ```
 
 Ask: **"Good to build?"**
@@ -79,14 +77,12 @@ After the builder finishes:
 
 ### 5. Report
 
-```
-◆ QUALIA ► TASK COMPLETE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  Task      {description}
-  Files     {files changed}
-  Commit    {commit hash}
-  Status    ✓ Done
+```bash
+node ~/.claude/bin/qualia-ui.js divider
+node ~/.claude/bin/qualia-ui.js ok "Task: {description}"
+node ~/.claude/bin/qualia-ui.js ok "Files: {files changed}"
+node ~/.claude/bin/qualia-ui.js ok "Commit: {commit hash}"
+node ~/.claude/bin/qualia-ui.js end "TASK COMPLETE"
 ```
 
 ```bash

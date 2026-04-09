@@ -9,6 +9,10 @@ You are about to create a reusable slash command. Skills are the leverage of the
 
 ## Process
 
+```bash
+node ~/.claude/bin/qualia-ui.js banner skill-new
+```
+
 ### 1. Scope Decision
 
 Ask the user with AskUserQuestion:

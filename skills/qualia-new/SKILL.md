@@ -13,9 +13,8 @@ Interactive project setup. Ask one step at a time using AskUserQuestion. Never d
 
 Print this FIRST, before anything else:
 
-```
-◆ QUALIA ► NEW PROJECT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```bash
+node ~/.claude/bin/qualia-ui.js banner new
 ```
 
 Then say: **"Let's build something. Tell me what you're making."**
@@ -319,14 +318,6 @@ git commit -m "init: project setup with planning files"
 git push -u origin main
 ```
 
-```
-◆ QUALIA ► PROJECT READY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  {Project Name}
-  Type       {type}
-  Phases     {N}
-  Client     {client}
-
-  → Run: /qualia-plan 1
+```bash
+node ~/.claude/bin/qualia-ui.js end "PROJECT READY" "/qualia-plan 1"
 ```

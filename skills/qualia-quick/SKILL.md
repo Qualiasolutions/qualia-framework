@@ -9,11 +9,20 @@ For tasks under 1 hour that don't need full phase planning. Single file changes,
 
 ## Process
 
+```bash
+node ~/.claude/bin/qualia-ui.js banner quick
+```
+
 1. **Understand:** Ask what needs to be done (or read the instruction)
 2. **Build:** Do it directly — read before write, MVP only
 3. **Verify:** Run `npx tsc --noEmit`, test locally
 4. **Commit:** Atomic commit with clear message
 5. **Update:** Update tracking.json notes field
+
+End with:
+```bash
+node ~/.claude/bin/qualia-ui.js end "QUICK FIX DONE"
+```
 
 ```bash
 git add {specific files}

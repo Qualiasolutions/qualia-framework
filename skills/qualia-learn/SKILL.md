@@ -31,6 +31,10 @@ Client-specific preferences, design choices, requirements.
 
 ## Process
 
+```bash
+node ~/.claude/bin/qualia-ui.js banner learn
+```
+
 ### 1. Classify
 
 If description given, classify automatically. Otherwise ask:

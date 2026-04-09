@@ -31,14 +31,19 @@ Restore context and route to the right next action.
 
 ### 4. Present and Route
 
+```bash
+node ~/.claude/bin/qualia-ui.js banner resume
+node ~/.claude/bin/qualia-ui.js info "Last session: {summary}"
 ```
-◆ QUALIA ► RESUMING
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Last session: {summary}
-  Phase: {N} — {status}
-  {Uncommitted changes if any}
 
-  → {next command}
+If uncommitted changes:
+```bash
+node ~/.claude/bin/qualia-ui.js warn "{N} uncommitted files"
+```
+
+End with the next command:
+```bash
+node ~/.claude/bin/qualia-ui.js next "{next command}"
 ```
 
 Clean up `.continue-here.md` after restoration (or offer to keep it).

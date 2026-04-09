@@ -23,18 +23,21 @@ Parse: tasks, waves, file references.
 
 ### 2. Execute Waves
 
-```
-◆ QUALIA ► BUILDING Phase {N}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```bash
+node ~/.claude/bin/qualia-ui.js banner build {N} "{phase name}"
 ```
 
 **For each wave (sequential):**
 
-```
-  ◆ Wave {W} ({count} tasks)
+```bash
+node ~/.claude/bin/qualia-ui.js wave {W} {total_waves} {tasks_in_wave}
 ```
 
 **For each task in the wave (parallel if multiple):**
+
+```bash
+node ~/.claude/bin/qualia-ui.js task {task_num} "{task title}"
+```
 
 Spawn a fresh builder subagent:
 
@@ -55,8 +58,8 @@ Execute this task. Read all @file references before writing. Commit when done.
 **After each task completes:**
 - Verify the commit exists: `git log --oneline -1`
 - Show result:
-```
-    ✓ Task {N}: {title}  ({commit hash})
+```bash
+node ~/.claude/bin/qualia-ui.js done {task_num} "{title}" {commit_hash}
 ```
 
 **After each wave completes:**
@@ -67,13 +70,11 @@ Execute this task. Read all @file references before writing. Commit when done.
 
 After all waves complete:
 
-```
-◆ QUALIA ► Phase {N} Built
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Tasks:  {done}/{total} ✓
-  Commits: {count}
-  Waves:  {count}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```bash
+node ~/.claude/bin/qualia-ui.js divider
+node ~/.claude/bin/qualia-ui.js ok "Tasks: {done}/{total}"
+node ~/.claude/bin/qualia-ui.js ok "Commits: {count}"
+node ~/.claude/bin/qualia-ui.js ok "Waves: {count}"
 ```
 
 ### 4. Handle Failures
@@ -91,6 +92,6 @@ node ~/.claude/bin/state.js transition --to built --phase {N} --tasks-done {done
 If state.js returns an error, show it to the employee and stop.
 Do NOT manually edit STATE.md or tracking.json — state.js handles both.
 
-```
-  → Run: /qualia-verify {N}
+```bash
+node ~/.claude/bin/qualia-ui.js end "PHASE {N} BUILT" "/qualia-verify {N}"
 ```

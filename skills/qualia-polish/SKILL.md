@@ -9,9 +9,8 @@ Run after all feature phases are verified. Makes it look production-ready.
 
 ## Process
 
-```
-◆ QUALIA ► POLISHING
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```bash
+node ~/.claude/bin/qualia-ui.js banner polish
 ```
 
 ### 0. Load Design Context
@@ -142,20 +141,17 @@ Do NOT manually edit STATE.md or tracking.json — state.js handles both.
 
 ### 6. Report
 
-```
-◆ QUALIA ► POLISHED
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Files modified: {N}
-
-  Typography    ✓ {brief}
-  Color         ✓ {brief}
-  Layout        ✓ {brief}
-  States        ✓ {brief}
-  Motion        ✓ {brief}
-  Accessibility ✓ {brief}
-  Responsive    ✓ {brief}
-  Performance   ✓ {brief}
-  Hardening     ✓ {brief}
-
-  → Run: /qualia-ship
+```bash
+node ~/.claude/bin/qualia-ui.js divider
+node ~/.claude/bin/qualia-ui.js info "Files modified: {N}"
+node ~/.claude/bin/qualia-ui.js ok "Typography — {brief}"
+node ~/.claude/bin/qualia-ui.js ok "Color — {brief}"
+node ~/.claude/bin/qualia-ui.js ok "Layout — {brief}"
+node ~/.claude/bin/qualia-ui.js ok "States — {brief}"
+node ~/.claude/bin/qualia-ui.js ok "Motion — {brief}"
+node ~/.claude/bin/qualia-ui.js ok "Accessibility — {brief}"
+node ~/.claude/bin/qualia-ui.js ok "Responsive — {brief}"
+node ~/.claude/bin/qualia-ui.js ok "Performance — {brief}"
+node ~/.claude/bin/qualia-ui.js ok "Hardening — {brief}"
+node ~/.claude/bin/qualia-ui.js end "POLISHED" "/qualia-ship"
 ```

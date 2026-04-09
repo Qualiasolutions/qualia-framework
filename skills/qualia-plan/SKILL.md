@@ -28,10 +28,9 @@ If this is a client project and `client-prefs.md` has an entry for the client, i
 
 ### 2. Spawn Planner (Fresh Context)
 
-```
-◆ QUALIA ► PLANNING Phase {N}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Spawning planner...
+```bash
+node ~/.claude/bin/qualia-ui.js banner plan {N} "{phase name from STATE.md}"
+node ~/.claude/bin/qualia-ui.js spawn planner "Breaking phase into tasks..."
 ```
 
 Spawn a subagent with `agents/planner.md` instructions:
@@ -57,24 +56,22 @@ Create the plan file at .planning/phase-{N}-plan.md
 
 ### 3. Review Plan
 
-Read the generated plan. Present to employee:
+Read the generated plan. Present the summary using the UI helpers:
 
+```bash
+node ~/.claude/bin/qualia-ui.js divider
+node ~/.claude/bin/qualia-ui.js ok "Plan ready: {count} tasks across {count} waves"
 ```
-◆ Phase {N} Plan
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  Tasks: {count}
-  Waves: {count}
+Then, for each wave, print:
 
-  Wave 1 (parallel):
-    Task 1: {title}
-    Task 2: {title}
-
-  Wave 2 (after Wave 1):
-    Task 3: {title}
-
-  Approve? (yes / adjust)
+```bash
+node ~/.claude/bin/qualia-ui.js wave {wave_num} {wave_total} {task_count_in_wave}
+node ~/.claude/bin/qualia-ui.js task 1 "{task title}"
+node ~/.claude/bin/qualia-ui.js task 2 "{task title}"
 ```
+
+End with an approval prompt (plain text, no UI helper): *"Approve? (yes / adjust)"*
 
 If "adjust" — get feedback, re-spawn planner with revision context.
 
@@ -86,8 +83,8 @@ node ~/.claude/bin/state.js transition --to planned --phase {N}
 If state.js returns an error, show it to the employee and stop.
 Do NOT manually edit STATE.md or tracking.json — state.js handles both.
 
-```
-  → Run: /qualia-build {N}
+```bash
+node ~/.claude/bin/qualia-ui.js end "PHASE {N} PLANNED" "/qualia-build {N}"
 ```
 
 ### Gap Closure Mode (`--gaps`)

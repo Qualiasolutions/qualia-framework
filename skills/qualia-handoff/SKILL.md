@@ -9,9 +9,8 @@ Prepare and deliver the finished project to the client.
 
 ## Process
 
-```
-◆ QUALIA ► HANDOFF
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```bash
+node ~/.claude/bin/qualia-ui.js banner handoff
 ```
 
 ### 1. Generate Handover Doc
@@ -61,10 +60,7 @@ node ~/.claude/bin/state.js transition --to handed_off
 ```
 Do NOT manually edit STATE.md or tracking.json — state.js handles both.
 
-```
-◆ QUALIA ► DELIVERED ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  {Project Name} handed off to {client}.
-  Don't forget: /qualia-report
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```bash
+node ~/.claude/bin/qualia-ui.js ok "{Project Name} handed off to {client}"
+node ~/.claude/bin/qualia-ui.js end "DELIVERED" "/qualia-report"
 ```

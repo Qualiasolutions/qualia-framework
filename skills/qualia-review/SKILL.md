@@ -15,6 +15,10 @@ Deep review with severity-scored findings. Different from `/qualia-verify` (whic
 
 ## General Review (default)
 
+```bash
+node ~/.claude/bin/qualia-ui.js banner review
+```
+
 Spawn parallel agents analyzing:
 
 1. **Code Quality** — Clean code, TypeScript strictness, naming, readability

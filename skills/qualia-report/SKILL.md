@@ -9,6 +9,10 @@ Generate a concise report of what was done. Committed to git and uploaded to the
 
 ## Process
 
+```bash
+node ~/.claude/bin/qualia-ui.js banner report
+```
+
 ### 1. Gather Data
 
 ```bash

@@ -15,6 +15,10 @@ Read the code, understand what's wrong, fix everything, move on. No reports, no 
 
 ## Process
 
+```bash
+node ~/.claude/bin/qualia-ui.js banner design
+```
+
 ### 1. Read Brand Context
 
 ```bash

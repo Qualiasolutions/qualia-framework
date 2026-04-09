@@ -15,6 +15,10 @@ Systematic debugging. Don't guess — gather symptoms, confirm diagnosis, then f
 
 ## Interactive Mode (Default)
 
+```bash
+node ~/.claude/bin/qualia-ui.js banner debug
+```
+
 ### 0. Check Known Fixes First
 
 Before gathering symptoms, check if we've seen this before:

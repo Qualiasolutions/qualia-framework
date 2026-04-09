@@ -208,8 +208,14 @@ async function main() {
       path.join(binDest, "state.js")
     );
     ok("state.js (state machine)");
+    copy(
+      path.join(FRAMEWORK_DIR, "bin", "qualia-ui.js"),
+      path.join(binDest, "qualia-ui.js")
+    );
+    fs.chmodSync(path.join(binDest, "qualia-ui.js"), 0o755);
+    ok("qualia-ui.js (cosmetics library)");
   } catch (e) {
-    warn(`state.js — ${e.message}`);
+    warn(`scripts — ${e.message}`);
   }
 
   // ─── Guide ─────────────────────────────────────────────
@@ -448,7 +454,7 @@ async function main() {
   console.log(`  Agents:       ${WHITE}${agentCount}${RESET} ${DIM}(planner, builder, verifier, qa-browser)${RESET}`);
   console.log(`  Hooks:        ${WHITE}8${RESET} ${DIM}(session-start, auto-update, branch-guard, pre-push, env-block, migration-guard, deploy-gate, pre-compact)${RESET}`);
   console.log(`  Rules:        ${WHITE}${fs.readdirSync(rulesDir).length}${RESET} ${DIM}(security, frontend, design-reference, deployment)${RESET}`);
-  console.log(`  Scripts:      ${WHITE}1${RESET} ${DIM}(state.js — state machine)${RESET}`);
+  console.log(`  Scripts:      ${WHITE}2${RESET} ${DIM}(state.js, qualia-ui.js)${RESET}`);
   console.log(`  Knowledge:    ${WHITE}3${RESET} ${DIM}(patterns, fixes, client prefs)${RESET}`);
   console.log(`  Templates:    ${WHITE}${fs.readdirSync(tmplDir).length}${RESET}`);
   console.log(`  Status line:  ${GREEN}✓${RESET}`);

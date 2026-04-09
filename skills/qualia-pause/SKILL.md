@@ -9,6 +9,10 @@ Save context so the next session picks up where you left off.
 
 ## Process
 
+```bash
+node ~/.claude/bin/qualia-ui.js banner pause
+```
+
 ### 1. Read State
 
 ```bash

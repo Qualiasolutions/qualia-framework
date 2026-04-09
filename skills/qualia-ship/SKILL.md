@@ -9,9 +9,8 @@ Full deployment pipeline with quality gates.
 
 ## Process
 
-```
-◆ QUALIA ► SHIPPING
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```bash
+node ~/.claude/bin/qualia-ui.js banner ship
 ```
 
 ### 1. Quality Gates
@@ -73,14 +72,12 @@ curl -s -o /dev/null -w "%{http_code}" {domain}/api/auth/callback
 
 ### 6. Report
 
-```
-◆ QUALIA ► SHIPPED ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  URL      {production url}
-  Status   HTTP 200 ✓
-  Latency  {time}ms ✓
-  Auth     ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```bash
+node ~/.claude/bin/qualia-ui.js divider
+node ~/.claude/bin/qualia-ui.js ok "URL: {production url}"
+node ~/.claude/bin/qualia-ui.js ok "Status: HTTP 200"
+node ~/.claude/bin/qualia-ui.js ok "Latency: {time}ms"
+node ~/.claude/bin/qualia-ui.js ok "Auth endpoint responds"
 ```
 
 ```bash
@@ -88,6 +85,6 @@ node ~/.claude/bin/state.js transition --to shipped --deployed-url {production u
 ```
 Do NOT manually edit STATE.md or tracking.json — state.js handles both.
 
-```
-  → Run: /qualia-handoff
+```bash
+node ~/.claude/bin/qualia-ui.js end "SHIPPED" "/qualia-handoff"
 ```

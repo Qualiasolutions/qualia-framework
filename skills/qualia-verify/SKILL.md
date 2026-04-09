@@ -24,10 +24,9 @@ cat .planning/phase-{N}-verification.md 2>/dev/null || echo "NONE"
 
 ### 2. Spawn Verifier (Fresh Context)
 
-```
-◆ QUALIA ► VERIFYING Phase {N}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Spawning verifier...
+```bash
+node ~/.claude/bin/qualia-ui.js banner verify {N} "{phase name}"
+node ~/.claude/bin/qualia-ui.js spawn verifier "Goal-backward check..."
 ```
 
 ```
@@ -73,28 +72,26 @@ Wait for both the main verifier and the QA browser agent before moving to step 3
 Read the verification report. Present:
 
 **If PASS:**
+```bash
+node ~/.claude/bin/qualia-ui.js ok "All {count} criteria passed"
+node ~/.claude/bin/qualia-ui.js end "PHASE {N} VERIFIED" "/qualia-plan {N+1}"
 ```
-◆ QUALIA ► Phase {N} VERIFIED ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  All {count} criteria passed.
-
-  → Run: /qualia-plan {N+1}
-```
+(If phase == total phases, use `/qualia-polish` as the next command.)
 
 **If FAIL:**
+```bash
+node ~/.claude/bin/qualia-ui.js ok "Passed: {pass_count}"
+node ~/.claude/bin/qualia-ui.js fail "Failed: {fail_count}"
 ```
-◆ QUALIA ► Phase {N} GAPS FOUND
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  Passed: {pass_count}
-  Failed: {fail_count}
+Then for each gap:
+```bash
+node ~/.claude/bin/qualia-ui.js fail "{gap description}"
+```
 
-  Gaps:
-    ✗ {gap 1 — specific description}
-    ✗ {gap 2 — specific description}
-
-  → Run: /qualia-plan {N} --gaps
+End:
+```bash
+node ~/.claude/bin/qualia-ui.js end "PHASE {N} GAPS FOUND" "/qualia-plan {N} --gaps"
 ```
 
 ### 4. Update State
