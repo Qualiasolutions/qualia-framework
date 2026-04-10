@@ -64,7 +64,7 @@ Every finding:
 Write to `.planning/REVIEW.md`. CRITICAL or HIGH findings are deploy blockers — `/qualia-ship` checks for them.
 
 ```
-◆ Review Complete
+⬢ Review Complete
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Critical:  {N}
   High:      {N}

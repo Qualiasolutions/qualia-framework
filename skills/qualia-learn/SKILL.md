@@ -70,7 +70,7 @@ echo "{formatted entry}" >> ~/.claude/knowledge/{type}.md
 ### 4. Confirm
 
 ```
-◆ Saved to {file}
+⬢ Saved to {file}
   "{title}"
 ```
 

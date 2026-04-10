@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Note: git tags for historical versions were not retained; commit references are approximate
 > and dates reflect commit history rather than npm publish timestamps.
 
+## [2.10.0] — 2026-04-11
+
+Modern icon system, statusline context indicators.
+
+### Added
+- Statusline now shows memory count (`⊙`), hooks count (`⚙`), and skills count (`✦`) on the top bar.
+- Each Qualia action has a unique, meaningful glyph: `⬢` router, `✦` new, `▣` plan, `⚙` build,
+  `◎` verify, `✧` polish, `△` ship, `⇢` handoff, `▤` report, `⊘` debug, `⊙` learn,
+  `⏸` pause, `▶` resume, `⊛` review, `◈` design, `⚡` quick, `▪` task, `⟐` gaps.
+
+### Changed
+- Replaced all `◆` diamond glyphs with `⬢` hexagon (Qualia brand mark) across all files:
+  qualia-ui.js, statusline.js, install.js, cli.js, hooks, and skill documentation.
+- Updated utility glyphs: spawn (`⬡`), wave (`»`), next (`⟶`), banner separator (`▸`).
+- Spinner tips and hook status messages now use `⬢` prefix.
+
 ## [Unreleased]
 
 v2.9.0 — housekeeping, test coverage, and release hygiene. In progress.

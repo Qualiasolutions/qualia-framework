@@ -40,25 +40,25 @@ const RULE_DIM = `${DIM2}${RULE}${RESET}`;
 
 // ─── Action Labels ───────────────────────────────────────
 const ACTIONS = {
-  router:     { label: "SMART ROUTER",     glyph: "◆" },
-  new:        { label: "NEW PROJECT",      glyph: "◆" },
-  plan:       { label: "PLANNING",         glyph: "◇" },
-  build:      { label: "BUILDING",         glyph: "◈" },
-  verify:     { label: "VERIFYING",        glyph: "◉" },
-  polish:     { label: "POLISHING",        glyph: "◆" },
-  ship:       { label: "SHIPPING",         glyph: "▲" },
-  handoff:    { label: "HANDING OFF",      glyph: "▶" },
-  report:     { label: "SESSION REPORT",   glyph: "◆" },
-  debug:      { label: "DEBUGGING",        glyph: "◊" },
-  learn:      { label: "LEARNING",         glyph: "◆" },
-  pause:      { label: "PAUSING",          glyph: "◆" },
-  resume:     { label: "RESUMING",         glyph: "◆" },
-  review:     { label: "REVIEW",           glyph: "◆" },
-  design:     { label: "DESIGN PASS",      glyph: "◆" },
-  quick:      { label: "QUICK FIX",        glyph: "◆" },
-  task:       { label: "TASK",             glyph: "◆" },
-  "skill-new": { label: "NEW SKILL",       glyph: "◆" },
-  gaps:       { label: "GAP CLOSURE",      glyph: "◇" },
+  router:     { label: "SMART ROUTER",     glyph: "⬢" },
+  new:        { label: "NEW PROJECT",      glyph: "✦" },
+  plan:       { label: "PLANNING",         glyph: "▣" },
+  build:      { label: "BUILDING",         glyph: "⚙" },
+  verify:     { label: "VERIFYING",        glyph: "◎" },
+  polish:     { label: "POLISHING",        glyph: "✧" },
+  ship:       { label: "SHIPPING",         glyph: "△" },
+  handoff:    { label: "HANDING OFF",      glyph: "⇢" },
+  report:     { label: "SESSION REPORT",   glyph: "▤" },
+  debug:      { label: "DEBUGGING",        glyph: "⊘" },
+  learn:      { label: "LEARNING",         glyph: "⊙" },
+  pause:      { label: "PAUSING",          glyph: "⏸" },
+  resume:     { label: "RESUMING",         glyph: "▶" },
+  review:     { label: "REVIEW",           glyph: "⊛" },
+  design:     { label: "DESIGN PASS",      glyph: "◈" },
+  quick:      { label: "QUICK FIX",        glyph: "⚡" },
+  task:       { label: "TASK",             glyph: "▪" },
+  "skill-new": { label: "NEW SKILL",       glyph: "✦" },
+  gaps:       { label: "GAP CLOSURE",      glyph: "⟐" },
 };
 
 // ─── State Reading ───────────────────────────────────────
@@ -126,7 +126,7 @@ function pad(str, width) {
 
 // ─── Commands ────────────────────────────────────────────
 function cmdBanner(action, phase, subtitle) {
-  const spec = ACTIONS[action] || { label: (action || "qualia").toUpperCase(), glyph: "◆" };
+  const spec = ACTIONS[action] || { label: (action || "qualia").toUpperCase(), glyph: "⬢" };
   const state = readState();
   const config = readConfig();
   const project = projectName();
@@ -136,7 +136,7 @@ function cmdBanner(action, phase, subtitle) {
     : spec.label;
 
   console.log("");
-  console.log(`  ${TEAL}${BOLD}${spec.glyph}${RESET} ${WHITE}${BOLD}QUALIA${RESET} ${DIM}►${RESET} ${WHITE}${title}${RESET}`);
+  console.log(`  ${TEAL}${BOLD}${spec.glyph}${RESET} ${WHITE}${BOLD}QUALIA${RESET} ${DIM}▸${RESET} ${WHITE}${title}${RESET}`);
   console.log(`  ${RULE_DIM}`);
 
   // Context panel
@@ -218,7 +218,7 @@ function cmdInfo(msg) {
 function cmdSpawn(agent, desc) {
   const name = agent || "agent";
   const d = desc ? ` ${DIM}— ${desc}${RESET}` : "";
-  console.log(`  ${TEAL}⟐${RESET} ${WHITE}Spawning${RESET} ${TEAL}${name}${RESET}${d}`);
+  console.log(`  ${TEAL}⬡${RESET} ${WHITE}Spawning${RESET} ${TEAL}${name}${RESET}${d}`);
 }
 
 function cmdWave(num, total, taskCount) {
@@ -226,7 +226,7 @@ function cmdWave(num, total, taskCount) {
   const n = parseInt(num) || 0;
   const t = parseInt(total) || 0;
   const c = parseInt(taskCount) || 0;
-  console.log(`  ${TEAL}▸${RESET} ${WHITE}${BOLD}Wave ${n}/${t}${RESET} ${DIM}(${c} ${c === 1 ? "task" : "tasks"}, parallel)${RESET}`);
+  console.log(`  ${TEAL}»${RESET} ${WHITE}${BOLD}Wave ${n}/${t}${RESET} ${DIM}(${c} ${c === 1 ? "task" : "tasks"}, parallel)${RESET}`);
 }
 
 function cmdTask(num, title) {
@@ -241,16 +241,16 @@ function cmdDone(num, title, commit) {
 function cmdNext(cmd) {
   if (!cmd) return;
   console.log("");
-  console.log(`  ${TEAL}→${RESET} ${WHITE}Next:${RESET}  ${TEAL}${BOLD}${cmd}${RESET}`);
+  console.log(`  ${TEAL}⟶${RESET} ${WHITE}Next:${RESET}  ${TEAL}${BOLD}${cmd}${RESET}`);
   console.log("");
 }
 
 function cmdEnd(status, nextCmd) {
   console.log("");
-  console.log(`  ${TEAL}${BOLD}◆${RESET} ${WHITE}${BOLD}${status || "DONE"}${RESET}`);
+  console.log(`  ${TEAL}${BOLD}⬢${RESET} ${WHITE}${BOLD}${status || "DONE"}${RESET}`);
   console.log(`  ${RULE_DIM}`);
   if (nextCmd) {
-    console.log(`  ${TEAL}→${RESET} ${WHITE}Next:${RESET}  ${TEAL}${BOLD}${nextCmd}${RESET}`);
+    console.log(`  ${TEAL}⟶${RESET} ${WHITE}Next:${RESET}  ${TEAL}${BOLD}${nextCmd}${RESET}`);
   }
   console.log("");
 }

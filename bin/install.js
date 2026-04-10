@@ -70,7 +70,7 @@ function askCode() {
   return new Promise((resolve) => {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
     console.log("");
-    console.log(`${TEAL}  ◆ Qualia Framework v2${RESET}`);
+    console.log(`${TEAL}  ⬢ Qualia Framework v2${RESET}`);
     console.log(`${DIM}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}`);
     console.log("");
     rl.question(`  ${WHITE}Enter install code:${RESET} `, (answer) => {
@@ -425,16 +425,16 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
   settings.spinnerTipsOverride = {
     excludeDefault: true,
     tips: [
-      "◆ Lost? Type /qualia for the next step",
-      "◆ Small fix? Use /qualia-quick to skip planning",
-      "◆ End of day? /qualia-report before you clock out",
-      "◆ Context isolation: every task gets a fresh AI brain",
-      "◆ The verifier doesn't trust claims — it greps the code",
-      "◆ Plans are prompts — the plan IS what the builder reads",
-      "◆ Feature branches only — never push to main",
-      "◆ Read before write — no exceptions",
-      "◆ MVP first — build what's asked, nothing extra",
-      "◆ tracking.json syncs to ERP on every push",
+      "⬢ Lost? Type /qualia for the next step",
+      "⬢ Small fix? Use /qualia-quick to skip planning",
+      "⬢ End of day? /qualia-report before you clock out",
+      "⬢ Context isolation: every task gets a fresh AI brain",
+      "⬢ The verifier doesn't trust claims — it greps the code",
+      "⬢ Plans are prompts — the plan IS what the builder reads",
+      "⬢ Feature branches only — never push to main",
+      "⬢ Read before write — no exceptions",
+      "⬢ MVP first — build what's asked, nothing extra",
+      "⬢ tracking.json syncs to ERP on every push",
     ],
   };
 
@@ -470,21 +470,21 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
             if: "Bash(git push*)",
             command: nodeCmd("branch-guard.js"),
             timeout: 10,
-            statusMessage: "◆ Checking branch permissions...",
+            statusMessage: "⬢ Checking branch permissions...",
           },
           {
             type: "command",
             if: "Bash(git push*)",
             command: nodeCmd("pre-push.js"),
             timeout: 15,
-            statusMessage: "◆ Syncing tracking...",
+            statusMessage: "⬢ Syncing tracking...",
           },
           {
             type: "command",
             if: "Bash(vercel --prod*)",
             command: nodeCmd("pre-deploy-gate.js"),
             timeout: 180,
-            statusMessage: "◆ Running quality gates...",
+            statusMessage: "⬢ Running quality gates...",
           },
         ],
       },
@@ -496,14 +496,14 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
             if: "Edit(*.env*)|Write(*.env*)",
             command: nodeCmd("block-env-edit.js"),
             timeout: 5,
-            statusMessage: "◆ Checking file permissions...",
+            statusMessage: "⬢ Checking file permissions...",
           },
           {
             type: "command",
             if: "Edit(*migration*)|Write(*migration*)|Edit(*.sql)|Write(*.sql)",
             command: nodeCmd("migration-guard.js"),
             timeout: 10,
-            statusMessage: "◆ Checking migration safety...",
+            statusMessage: "⬢ Checking migration safety...",
           },
         ],
       },
@@ -516,7 +516,7 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
             type: "command",
             command: nodeCmd("pre-compact.js"),
             timeout: 15,
-            statusMessage: "◆ Saving state...",
+            statusMessage: "⬢ Saving state...",
           },
         ],
       },
@@ -542,7 +542,7 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
 
   // ─── Summary ───────────────────────────────────────────
   console.log("");
-  console.log(`${TEAL}  ◆ Installed ✓${RESET}`);
+  console.log(`${TEAL}  ⬢ Installed ✓${RESET}`);
   console.log(`${DIM}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}`);
   console.log(`  ${WHITE}${member.name}${RESET} ${DIM}(${member.role})${RESET}`);
   console.log(`  Skills:       ${WHITE}${skills.length}${RESET}`);

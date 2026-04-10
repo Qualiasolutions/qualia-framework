@@ -34,7 +34,7 @@ function writeConfig(cfg) {
 
 function banner() {
   console.log("");
-  console.log(`  ${TEAL}${BOLD}◆${RESET} ${WHITE}${BOLD}Qualia Framework${RESET} ${DIM}v${PKG.version}${RESET}`);
+  console.log(`  ${TEAL}${BOLD}⬢${RESET} ${WHITE}${BOLD}Qualia Framework${RESET} ${DIM}v${PKG.version}${RESET}`);
   console.log(`  ${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}`);
 }
 
@@ -339,7 +339,7 @@ async function cmdUninstall() {
 
   // Summary.
   console.log("");
-  console.log(`${TEAL}  ◆ Uninstall complete${RESET}`);
+  console.log(`${TEAL}  ⬢ Uninstall complete${RESET}`);
   console.log(`${DIM}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}`);
   console.log(`  ${DIM}Files removed:${RESET}       ${WHITE}${counters.filesRemoved}${RESET}`);
   console.log(`  ${DIM}Directories removed:${RESET} ${WHITE}${counters.dirsRemoved}${RESET}`);

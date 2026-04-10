@@ -11,6 +11,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const HOME = os.homedir();
 
 // ─── Colors (matches bin/qualia-ui.js palette) ───────────
 const TEAL = "\x1b[38;2;0;206;209m";
@@ -151,6 +152,47 @@ try {
   }
 } catch {}
 
+// ─── Memory count ────────────────────────────────────────
+let MEMORY_COUNT = 0;
+try {
+  const dirKey = DIR.replace(/\//g, "-");
+  const memDir = path.join(HOME, ".claude", "projects", dirKey, "memory");
+  if (fs.existsSync(memDir)) {
+    const files = fs.readdirSync(memDir).filter(f => f.endsWith(".md") && f !== "MEMORY.md");
+    MEMORY_COUNT = files.length;
+  }
+} catch {}
+
+// ─── Hooks count ─────────────────────────────────────────
+let HOOKS_COUNT = 0;
+try {
+  const settingsPath = path.join(HOME, ".claude", "settings.json");
+  if (fs.existsSync(settingsPath)) {
+    const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+    if (settings.hooks) {
+      for (const event of Object.values(settings.hooks)) {
+        if (Array.isArray(event)) {
+          for (const matcher of event) {
+            if (matcher.hooks && Array.isArray(matcher.hooks)) {
+              HOOKS_COUNT += matcher.hooks.length;
+            }
+          }
+        }
+      }
+    }
+  }
+} catch {}
+
+// ─── Skills count ────────────────────────────────────────
+let SKILLS_COUNT = 0;
+try {
+  const skillsDir = path.join(HOME, ".claude", "skills");
+  if (fs.existsSync(skillsDir)) {
+    const entries = fs.readdirSync(skillsDir, { withFileTypes: true });
+    SKILLS_COUNT = entries.filter(e => e.isDirectory() || e.name.endsWith(".md")).length;
+  }
+} catch {}
+
 // ─── Duration ────────────────────────────────────────────
 let DUR = "0s";
 try {
@@ -167,11 +209,11 @@ try {
   COST_FMT = `$${COST.toFixed(2)}`;
 } catch {}
 
-// ─── Line 1: Project + Git + Agent + Worktree + Phase ────
+// ─── Line 1: Project + Git + Agent + Worktree + Phase + Memory + Hooks ──
 let LINE1 = "";
 try {
   const dirBase = path.basename(DIR) || DIR;
-  LINE1 = `${TEAL}◆${RESET} ${WHITE}${dirBase}${RESET}`;
+  LINE1 = `${TEAL}⬢${RESET} ${WHITE}${dirBase}${RESET}`;
   if (BRANCH) {
     if (CHANGES > 0) {
       LINE1 += ` ${DIM}on${RESET} ${TEAL_GLOW}${BRANCH}${RESET} ${YELLOW}~${CHANGES}${RESET}`;
@@ -182,8 +224,16 @@ try {
   if (AGENT) LINE1 += ` ${DIM}│${RESET} ${TEAL}⚡${AGENT}${RESET}`;
   if (WORKTREE) LINE1 += ` ${DIM}│${RESET} ${TEAL_DIM}⎇ ${WORKTREE}${RESET}`;
   if (PHASE_INFO) LINE1 += ` ${DIM}│${RESET} ${PHASE_INFO}`;
+  // Memory, hooks, skills — context indicators
+  const contextParts = [];
+  if (MEMORY_COUNT > 0) contextParts.push(`${TEAL}⊙${RESET}${DIM}${MEMORY_COUNT}${RESET}`);
+  if (HOOKS_COUNT > 0) contextParts.push(`${TEAL_GLOW}⚙${RESET}${DIM}${HOOKS_COUNT}${RESET}`);
+  if (SKILLS_COUNT > 0) contextParts.push(`${TEAL_DIM}✦${RESET}${DIM}${SKILLS_COUNT}${RESET}`);
+  if (contextParts.length > 0) {
+    LINE1 += ` ${DIM}│${RESET} ${contextParts.join(` ${DIM}·${RESET} `)}`;
+  }
 } catch {
-  LINE1 = `${TEAL}◆${RESET} ${WHITE}qualia${RESET}`;
+  LINE1 = `${TEAL}⬢${RESET} ${WHITE}qualia${RESET}`;
 }
 
 // ─── Line 2: Context bar + Cost + Duration + Model ───────

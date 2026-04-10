@@ -100,7 +100,7 @@ options:
     description: "Gradients, rounded shapes, vibrant palette"
     preview: |
       ┌──────────────────────────────┐
-      │  ◆ ● ▲ ■  COLORFUL          │
+      │  ⬢ ● ▲ ■  COLORFUL          │
       │                              │
       │  ╭──────╮  ╭──────╮         │
       │  │ Card │  │ Card │         │
@@ -173,7 +173,7 @@ If there's an entry for this client, show it to the user: *"I have notes on {cli
 Present a summary:
 
 ```
-◆ QUALIA ► PROJECT SUMMARY
+⬢ QUALIA ▸ PROJECT SUMMARY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   Project    {name}

@@ -73,7 +73,7 @@ git commit -m "style: design transformation"
 ```
 
 ```
-◆ Design Transformation Complete
+⬢ Design Transformation Complete
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Files: {N}
   Changes:

@@ -48,7 +48,7 @@ if (/CREATE\s+TABLE/i.test(content) && !/ENABLE\s+ROW\s+LEVEL\s+SECURITY/i.test(
 }
 
 if (errors.length > 0) {
-  console.log("◆ Migration guard — dangerous patterns found:");
+  console.log("⬢ Migration guard — dangerous patterns found:");
   for (const e of errors) {
     console.log(`  ✗ ${e}`);
   }

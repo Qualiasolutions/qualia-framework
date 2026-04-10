@@ -73,7 +73,7 @@ function scanServiceRoleLeaks() {
   return leaks;
 }
 
-console.log("◆ Pre-deploy gate...");
+console.log("⬢ Pre-deploy gate...");
 
 // TypeScript
 if (fs.existsSync("tsconfig.json")) {
@@ -105,6 +105,6 @@ if (leaks.length > 0) {
   process.exit(1);
 }
 console.log("  ✓ Security");
-console.log("◆ All gates passed.");
+console.log("⬢ All gates passed.");
 
 process.exit(0);
