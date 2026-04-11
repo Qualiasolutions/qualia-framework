@@ -22,7 +22,7 @@ question: "Where should this skill live?"
 header: "Scope"
 options:
   - label: "Framework skill (ships to the team)"
-    description: "Edit qualia-framework-v2 repo. Everyone gets it on next update."
+    description: "Edit qualia-framework repo. Everyone gets it on next update."
   - label: "Local skill (just me)"
     description: "Lives only in ~/.claude/skills/. Not shared."
   - label: "Agent instead of a skill"
@@ -31,7 +31,7 @@ options:
 
 ### 1a. Resolve framework directory
 
-If the user chose **Framework skill** or a framework-scoped **Agent**, resolve `${FRAMEWORK_DIR}` — the checkout path of this user's qualia-framework-v2 repo — BEFORE computing any target paths. Never hardcode `/home/<user>/...`; different teammates and operating systems have different paths.
+If the user chose **Framework skill** or a framework-scoped **Agent**, resolve `${FRAMEWORK_DIR}` — the checkout path of this user's qualia-framework repo — BEFORE computing any target paths. Never hardcode `/home/<user>/...`; different teammates and operating systems have different paths.
 
 ```bash
 # Priority order: env var → git detection → ask user
@@ -39,13 +39,13 @@ FRAMEWORK_DIR="${QUALIA_FRAMEWORK_DIR:-}"
 if [ -z "$FRAMEWORK_DIR" ] && git -C . rev-parse --show-toplevel >/dev/null 2>&1; then
   ORIGIN=$(git -C . config --get remote.origin.url 2>/dev/null)
   case "$ORIGIN" in
-    *qualia-framework-v2*) FRAMEWORK_DIR=$(git -C . rev-parse --show-toplevel) ;;
+    *qualia-framework*) FRAMEWORK_DIR=$(git -C . rev-parse --show-toplevel) ;;
   esac
 fi
 echo "${FRAMEWORK_DIR:-UNRESOLVED}"
 ```
 
-If the command prints `UNRESOLVED`, ask the user: *"Where is your qualia-framework-v2 checkout? (absolute path, or type 'local' to save only to ~/.claude/)"*. If they type `local`, downgrade the scope to Local. Otherwise store the answer as `${FRAMEWORK_DIR}` for the rest of the session.
+If the command prints `UNRESOLVED`, ask the user: *"Where is your qualia-framework checkout? (absolute path, or type 'local' to save only to ~/.claude/)"*. If they type `local`, downgrade the scope to Local. Otherwise store the answer as `${FRAMEWORK_DIR}` for the rest of the session.
 
 **Framework** → target: `${FRAMEWORK_DIR}/skills/{name}/SKILL.md`
 **Local** → target: `~/.claude/skills/{name}/SKILL.md`
@@ -155,7 +155,7 @@ git add skills/{name}/
 git commit -m "feat: add /{name} skill"
 ```
 
-Remind the user to run `npx qualia-framework-v2 update` on their other machines, or bump the version and `npm publish`.
+Remind the user to run `npx qualia-framework update` on their other machines, or bump the version and `npm publish`.
 
 ## Anti-Patterns
 

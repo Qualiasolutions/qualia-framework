@@ -9,19 +9,19 @@ v3 applies lessons from Anthropic's ["Harness Design for Long-Running Apps"](htt
 ## Install
 
 ```bash
-npx qualia-framework-v2 install
+npx qualia-framework install
 ```
 
 Enter your team code when prompted. Get your code from Fawzi.
 
 **Other commands:**
 ```bash
-npx qualia-framework-v2 version    # Check installed version + updates
-npx qualia-framework-v2 update     # Update to latest (remembers your code)
-npx qualia-framework-v2 uninstall  # Clean removal from ~/.claude/
-npx qualia-framework-v2 team list  # Show team members
-npx qualia-framework-v2 team add   # Add a team member
-npx qualia-framework-v2 traces     # View recent hook telemetry
+npx qualia-framework version    # Check installed version + updates
+npx qualia-framework update     # Update to latest (remembers your code)
+npx qualia-framework uninstall  # Clean removal from ~/.claude/
+npx qualia-framework team list  # Show team members
+npx qualia-framework team add   # Add a team member
+npx qualia-framework traces     # View recent hook telemetry
 ```
 
 ## Usage
@@ -102,7 +102,7 @@ Plan files aren't documents that get translated into prompts — they ARE the pr
 ## Architecture
 
 ```
-npx qualia-framework-v2 install
+npx qualia-framework install
      |
      v
 ~/.claude/

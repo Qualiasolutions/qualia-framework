@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Qualia Framework v2 are documented here.
+All notable changes to the Qualia Framework are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -29,7 +29,7 @@ gains observability.
 - **Pre-deploy gate: Server Component detection** — `route.ts`,
   `middleware.ts`, `app/api/` paths, and `"use server"` directive files are
   now exempt from the service_role leak scan.
-- **Dynamic team management** — `qualia-framework-v2 team list|add|remove`
+- **Dynamic team management** — `qualia-framework team list|add|remove`
   CLI commands. Team dict externalized to `~/.claude/.qualia-team.json`;
   falls back to embedded defaults.
 - **ERP decoupling** — ERP config (`enabled`, `url`, `api_key_file`) stored
@@ -105,7 +105,7 @@ Housekeeping, test coverage, and release hygiene.
 - Behavioral test suites for `bin/cli.js`, `bin/install.js`, `bin/qualia-ui.js`,
   `bin/statusline.js`, and the `pre-deploy-gate` / `branch-guard` hooks.
 - `CHANGELOG.md` — this file. Backfilled from commit history.
-- `npx qualia-framework-v2 uninstall` — clean, surgical removal of the framework
+- `npx qualia-framework uninstall` — clean, surgical removal of the framework
   from `~/.claude/`. Supports `--yes` / `-y` for scripted use. Preserves
   user-customized `CLAUDE.md` and non-Qualia entries in `settings.json`.
   Optionally preserves the knowledge base (default Yes).
@@ -168,7 +168,7 @@ and Linux all get a more honest, more tested, more portable framework.
   Fixes the Windows banner when the username has spaces and removes the
   bash-only `2>/dev/null` redirect.
 - `bin/cli.js` `cmdUpdate`: replaced bash `<<<` here-string with `spawnSync`
-  + `input:`. Manual `npx qualia-framework-v2 update` now works on Windows
+  + `input:`. Manual `npx qualia-framework update` now works on Windows
   and on Debian/Ubuntu (where `/bin/sh` is `dash`, which also lacks `<<<`).
 - `skills/qualia-skill-new/SKILL.md` — removed 5 hardcoded
   `/home/qualia/Projects/...` paths in favor of `${FRAMEWORK_DIR}` detection
@@ -269,8 +269,8 @@ broken hooks for weeks.
 ## [2.4.0] — 2026-04-08
 
 ### Added
-- `version` and `update` CLI commands (`npx qualia-framework-v2 version`,
-  `npx qualia-framework-v2 update`).
+- `version` and `update` CLI commands (`npx qualia-framework version`,
+  `npx qualia-framework update`).
 - Knowledge system: `~/.claude/knowledge/` with `learned-patterns.md`,
   `common-fixes.md`, `client-prefs.md`.
 - `/qualia-learn` skill for capturing patterns, fixes, and client prefs to
@@ -337,24 +337,24 @@ Initial v2 release. Framework rewrite with agent wiring, full hook system,
 and install codes.
 
 ### Added
-- Initial `qualia-framework-v2` repo with full hook system and agent wiring.
+- Initial `qualia-framework` repo with full hook system and agent wiring.
 - Core skills, agents, hooks, rules, and templates.
 - `bin/install.js` and `bin/cli.js` installer / CLI.
 
-[Unreleased]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v3.0.0...HEAD
-[3.0.0]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.10.0...v3.0.0
-[2.10.0]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.9.0...v2.10.0
-[2.9.0]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.8.1...v2.9.0
-[2.8.1]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.8.0...v2.8.1
-[2.8.0]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.7.0...v2.8.0
-[2.7.0]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.6.1...v2.7.0
-[2.6.1]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.6.0...v2.6.1
-[2.6.0]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.5.0...v2.6.0
-[2.5.0]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.4.0...v2.5.0
-[2.4.0]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.3.0...v2.4.0
-[2.3.0]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.2.0...v2.3.0
-[2.2.0]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.1.2...v2.2.0
-[2.1.2]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.1.1...v2.1.2
-[2.1.1]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.1.0...v2.1.1
-[2.1.0]: https://github.com/Qualiasolutions/qualia-framework-v2/compare/v2.0.0...v2.1.0
-[2.0.0]: https://github.com/Qualiasolutions/qualia-framework-v2/releases/tag/v2.0.0
+[Unreleased]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.10.0...v3.0.0
+[2.10.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.9.0...v2.10.0
+[2.9.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.8.1...v2.9.0
+[2.8.1]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.8.0...v2.8.1
+[2.8.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.7.0...v2.8.0
+[2.7.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.6.1...v2.7.0
+[2.6.1]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.6.0...v2.6.1
+[2.6.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.5.0...v2.6.0
+[2.5.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.4.0...v2.5.0
+[2.4.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.3.0...v2.4.0
+[2.3.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.2.0...v2.3.0
+[2.2.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.1.2...v2.2.0
+[2.1.2]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.1.1...v2.1.2
+[2.1.1]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.1.0...v2.1.1
+[2.1.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.0.0...v2.1.0
+[2.0.0]: https://github.com/Qualiasolutions/qualia-framework/releases/tag/v2.0.0
