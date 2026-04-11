@@ -32,7 +32,20 @@ node ~/.claude/bin/qualia-ui.js banner polish
 cat .planning/DESIGN.md 2>/dev/null || echo "NO_DESIGN"
 ```
 
-If DESIGN.md exists → it's the standard. If not → use `rules/frontend.md` defaults.
+If DESIGN.md exists → it's the standard. Read ALL 12 sections. Key sections for polish:
+- §1 Visual Theme — the feel and signature details
+- §2 Color Palette — exact hex values, CSS variables, contrast ratios
+- §3 Typography — hierarchy table with exact sizes/weights/spacing
+- §4 Components — exact button/card/input/badge specs
+- §5 Layout — spacing scale, grid strategy
+- §6 Depth & Elevation — shadow levels with exact rgba values
+- §7 Do's/Don'ts — brand-specific guardrails
+- §9 Agent Prompt Guide — quick reference for common patterns
+- §10 Accessibility — WCAG checklist
+- §11 Hardening — stress-test criteria
+- §12 Anti-Slop Detection — grep patterns for automated checks
+
+If no DESIGN.md → use `rules/frontend.md` defaults.
 
 Read EVERY frontend file before modifying. No blind edits.
 
