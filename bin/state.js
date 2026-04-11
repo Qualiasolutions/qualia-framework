@@ -9,6 +9,17 @@ const PLANNING = ".planning";
 const STATE_FILE = path.join(PLANNING, "STATE.md");
 const TRACKING_FILE = path.join(PLANNING, "tracking.json");
 
+// ─── Trace ──────────────────────────────────────────────
+function _trace(event, data) {
+  try {
+    const traceDir = path.join(require("os").homedir(), ".claude", ".qualia-traces");
+    if (!fs.existsSync(traceDir)) fs.mkdirSync(traceDir, { recursive: true });
+    const entry = { hook: event, timestamp: new Date().toISOString(), ...data };
+    const file = path.join(traceDir, `${new Date().toISOString().split("T")[0]}.jsonl`);
+    fs.appendFileSync(file, JSON.stringify(entry) + "\n");
+  } catch { /* trace failures must not disrupt state machine */ }
+}
+
 // ─── Arg Parsing ─────────────────────────────────────────
 function parseArgs(argv) {
   const args = {};
@@ -469,6 +480,18 @@ function cmdTransition(opts) {
     return output(fail("WRITE_ERROR", e.message));
   }
 
+  // Skill outcome scoring — log transition for analytics
+  _trace("state-transition", {
+    result: "allow",
+    phase: s.phase,
+    status: s.status,
+    previous_status: prevStatus,
+    verification: t.verification,
+    gap_closure: prevStatus === "verified" && target === "planned",
+    duration_ms: 0,
+    extra: { verification: t.verification, gap_closure: prevStatus === "verified" && target === "planned" }
+  });
+
   output({
     ok: true,
     phase: s.phase,
@@ -675,12 +698,81 @@ function cmdValidatePlan(opts) {
     errors.push("Missing 'goal:' in frontmatter");
   }
 
+  // ─── Verification Contract Validation (non-blocking) ────
+  const warnings = [];
+  const VALID_CHECK_TYPES = ["file-exists", "grep-match", "command-exit", "behavioral"];
+  let contractCount = 0;
+
+  if (/^## Verification Contract/m.test(content)) {
+    // Extract the contract section (from header to next ## or end of file)
+    const contractSectionMatch = content.match(
+      /^## Verification Contract\s*\n([\s\S]+)/m
+    );
+    if (contractSectionMatch) {
+      // Trim at the next ## heading that isn't ### (i.e., a new top-level section)
+      let contractSection = contractSectionMatch[1];
+      const nextH2 = contractSection.search(/\n## (?!#)/);
+      if (nextH2 !== -1) contractSection = contractSection.substring(0, nextH2);
+      // Each contract starts with ### Contract for Task N
+      const contractBlocks = contractSection.match(/^### Contract for Task \d+/gm);
+      contractCount = contractBlocks ? contractBlocks.length : 0;
+
+      if (contractCount === 0) {
+        warnings.push("Verification Contract section exists but contains no contract blocks (expected '### Contract for Task N')");
+      } else {
+        // Split into individual contract blocks for validation
+        const blockSplits = contractSection.split(/^(?=### Contract for Task \d+)/m).filter(Boolean);
+        for (const block of blockSplits) {
+          const taskNumMatch = block.match(/^### Contract for Task (\d+)/);
+          if (!taskNumMatch) continue;
+          const taskNum = taskNumMatch[1];
+
+          const checkTypeMatch = block.match(/\*\*Check type:\*\*\s*(.+)/);
+          const hasCommand = /\*\*Command:\*\*/.test(block);
+          const hasExpected = /\*\*Expected:\*\*/.test(block);
+          const hasFailIf = /\*\*Fail if:\*\*/.test(block);
+
+          if (!checkTypeMatch) {
+            warnings.push(`Contract for Task ${taskNum}: missing 'Check type'`);
+          } else {
+            const checkType = checkTypeMatch[1].trim().toLowerCase();
+            if (!VALID_CHECK_TYPES.includes(checkType)) {
+              warnings.push(
+                `Contract for Task ${taskNum}: invalid check type '${checkType}' (valid: ${VALID_CHECK_TYPES.join(", ")})`
+              );
+            }
+            // behavioral type doesn't require Command or Expected
+            const isBehavioral = checkType === "behavioral";
+            if (!isBehavioral && !hasCommand) {
+              warnings.push(`Contract for Task ${taskNum}: missing 'Command' (required for ${checkType})`);
+            }
+            if (!isBehavioral && !hasExpected) {
+              warnings.push(`Contract for Task ${taskNum}: missing 'Expected' (required for ${checkType})`);
+            }
+          }
+
+          if (!hasFailIf) {
+            warnings.push(`Contract for Task ${taskNum}: missing 'Fail if'`);
+          }
+        }
+      }
+
+      // Warn if contract count < task count
+      if (taskCount > 0 && contractCount > 0 && contractCount < taskCount) {
+        warnings.push(
+          `Only ${contractCount} contract(s) for ${taskCount} task(s) — not all tasks have verification contracts`
+        );
+      }
+    }
+  }
+
   if (errors.length > 0) {
     return output({
       ok: false,
       error: "PLAN_VALIDATION_FAILED",
       phase,
       errors,
+      warnings: warnings.length > 0 ? warnings : undefined,
       message: `Plan file has ${errors.length} issue(s)`,
     });
   }
@@ -691,6 +783,8 @@ function cmdValidatePlan(opts) {
     phase,
     task_count: taskCount,
     done_when_count: doneWhenCount,
+    contract_count: contractCount,
+    warnings: warnings.length > 0 ? warnings : undefined,
   });
 }
 

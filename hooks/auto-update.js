@@ -76,7 +76,7 @@ try {
     const cfg = ${JSON.stringify(cfg)};
     try {
       fs.writeFileSync(LOCK_FILE, String(process.pid));
-      const r = spawnSync("npm", ["view", "qualia-framework-v2", "version"], {
+      const r = spawnSync("npm", ["view", "qualia-framework", "version"], {
         encoding: "utf8",
         timeout: 15000,
         shell: process.platform === "win32",
@@ -93,7 +93,7 @@ try {
       };
       if (cmp(latest, cfg.version) > 0) {
         // Silent update — pipe the install code via stdin
-        const child = spawnSync("npx", ["qualia-framework-v2@latest", "install"], {
+        const child = spawnSync("npx", ["qualia-framework@latest", "install"], {
           input: cfg.code + "\\n",
           timeout: 120000,
           stdio: ["pipe", "ignore", "ignore"],

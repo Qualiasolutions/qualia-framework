@@ -251,10 +251,18 @@ Phase goal: "Working real-time chat interface with message history."
 
 ## Design Verification (for phases with frontend work)
 
-If the phase involved UI/frontend tasks, add a **Design Quality** section to the report:
+If the phase involved UI/frontend tasks, add a **Design Quality** section to the report.
 
-### Check 1: Design System Compliance
+First, read the project's DESIGN.md:
 ```bash
+cat .planning/DESIGN.md 2>/dev/null || echo "NO_DESIGN_MD"
+```
+
+If DESIGN.md exists, verify against its specific values. If not, verify against `rules/frontend.md` defaults.
+
+### Check 1: Design System Compliance (DESIGN.md §2, §3, §12)
+```bash
+# Anti-slop detection — run patterns from DESIGN.md §12
 # Generic fonts (should NOT appear)
 grep -rn "font-family.*Inter\|font-family.*Roboto\|font-family.*Arial\|fontFamily.*Inter\|fontFamily.*Roboto" --include="*.tsx" --include="*.jsx" --include="*.css" app/ components/ src/ 2>/dev/null
 grep -rn "font-sans\|font-inter" --include="*.tsx" --include="*.jsx" app/ components/ src/ 2>/dev/null
@@ -264,9 +272,30 @@ grep -rn "max-w-\[1200\|max-w-\[1280\|max-width.*1200\|max-width.*1280\|max-w-7x
 
 # Hardcoded colors instead of CSS variables (check density)
 grep -rn "color:.*#\|background:.*#\|bg-\[#" --include="*.tsx" --include="*.jsx" app/ components/ src/ 2>/dev/null | wc -l
+# If DESIGN.md §2 defines CSS variables and this count > 5 → flag
+
+# Blue-purple gradients (AI slop tell)
+grep -rn "from-blue.*to-purple\|from-purple.*to-blue\|linear-gradient.*blue.*purple" --include="*.tsx" --include="*.css" app/ components/ src/ 2>/dev/null
 ```
 
-### Check 2: Accessibility Basics
+### Check 2: Typography (DESIGN.md §3)
+```bash
+# Verify project fonts are actually loaded (check layout.tsx or globals.css)
+grep -rn "font-family\|fontFamily\|Google.*Font\|next/font" --include="*.tsx" --include="*.css" app/layout* src/ 2>/dev/null | head -5
+
+# If DESIGN.md specifies a font, grep for it
+# grep -rn "{DESIGN.MD_FONT_NAME}" --include="*.tsx" --include="*.css" app/ 2>/dev/null
+```
+Cross-reference: do the fonts in code match §3 hierarchy table? Are weights correct?
+
+### Check 3: Depth & Elevation (DESIGN.md §6)
+```bash
+# Check for shadow usage (should use CSS variables, not inline rgba)
+grep -rn "box-shadow\|shadow-\[" --include="*.tsx" --include="*.css" app/ components/ src/ 2>/dev/null | head -10
+# Verify shadows match the elevation levels from DESIGN.md §6
+```
+
+### Check 4: Accessibility (DESIGN.md §10)
 ```bash
 # Images without alt text
 grep -rn "<img" --include="*.tsx" --include="*.jsx" app/ components/ src/ 2>/dev/null | grep -v "alt="
@@ -280,35 +309,53 @@ grep -rn "outline.*none\|outline-none" --include="*.tsx" --include="*.jsx" --inc
 # Missing lang attribute
 grep -rn "<html" --include="*.tsx" --include="*.jsx" app/ 2>/dev/null | grep -v "lang="
 
-# Heading hierarchy — check for h1 count
+# Heading hierarchy — check for h1 count per page
 grep -rn "<h1\|<H1" --include="*.tsx" --include="*.jsx" app/ 2>/dev/null | wc -l
+
+# Skip link presence
+grep -rn "skip.*main\|sr-only.*focus" --include="*.tsx" app/layout* 2>/dev/null
 ```
 
-### Check 3: Interactive States
+### Check 5: Interactive States
 ```bash
-# Buttons/links without hover/focus styles — spot check
-grep -rn "<button\|<Button\|<a " --include="*.tsx" --include="*.jsx" app/ components/ src/ 2>/dev/null | head -5
-# Verify these have hover/focus transitions in their styling
-
 # Loading states — check for skeleton/spinner usage in pages with data fetching
 grep -rn "fetch\|useQuery\|useSWR\|getServerSide\|async.*Component" --include="*.tsx" app/ 2>/dev/null | head -5
 grep -rn "loading\|skeleton\|spinner\|Spinner\|Loading" --include="*.tsx" app/ components/ 2>/dev/null | wc -l
 
 # Empty states — check lists/tables have empty handling
 grep -rn "\.length.*===.*0\|\.length.*>.*0\|isEmpty\|no.*results\|no.*data" --include="*.tsx" app/ components/ 2>/dev/null | wc -l
+
+# Error states — check for error boundaries or error handling
+grep -rn "error\|Error\|catch\|fallback" --include="*.tsx" app/ components/ 2>/dev/null | wc -l
 ```
 
-### Check 4: Responsive
+### Check 6: Responsive (DESIGN.md §8)
 ```bash
 # Check for responsive utilities or media queries
 grep -rn "sm:\|md:\|lg:\|xl:\|@media" --include="*.tsx" --include="*.jsx" --include="*.css" app/ components/ src/ 2>/dev/null | wc -l
 # If 0 responsive declarations across multiple components → FAIL
+
+# Check collapsing strategy matches DESIGN.md §8 table
+# Verify navigation has mobile treatment
+grep -rn "hamburger\|mobile.*nav\|drawer\|menu.*toggle\|MenuIcon" --include="*.tsx" app/ components/ 2>/dev/null
+```
+
+### Check 7: Hardening (DESIGN.md §11)
+```bash
+# Check for text overflow handling
+grep -rn "truncate\|overflow.*hidden\|text-ellipsis\|line-clamp" --include="*.tsx" --include="*.css" app/ components/ 2>/dev/null | wc -l
+
+# Check for empty state components
+grep -rn "empty\|Empty\|no.*found\|no.*results" --include="*.tsx" app/ components/ 2>/dev/null | wc -l
 ```
 
 ### Scoring Design
-- 0 generic fonts + 0 hardcoded max-widths + colors via variables = **PASS**
-- Accessibility basics all present = **PASS**
-- States and responsive present = **PASS**
+- 0 generic fonts + 0 hardcoded max-widths + colors via CSS vars = **PASS** (§12)
+- Fonts/weights match DESIGN.md §3 hierarchy = **PASS**
+- Shadows use elevation system from §6 = **PASS**
+- Accessibility checklist from §10 all present = **PASS**
+- States (loading/empty/error) present = **PASS**
+- Responsive declarations present + mobile nav = **PASS** (§8)
 - Any category failing = add to **Gaps** list with specific file:line
 
 ## Rules

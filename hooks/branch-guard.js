@@ -41,7 +41,7 @@ try {
   const cfg = JSON.parse(fs.readFileSync(CONFIG, "utf8"));
   role = cfg.role || "";
 } catch {
-  fail(`BLOCKED: ${CONFIG} missing or unreadable. Run: npx qualia-framework-v2 install`);
+  fail(`BLOCKED: ${CONFIG} missing or unreadable. Run: npx qualia-framework install`);
 }
 
 if (!role) {
