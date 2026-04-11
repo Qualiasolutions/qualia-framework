@@ -81,14 +81,34 @@ function copy(src, dest) {
   fs.copyFileSync(src, dest);
 }
 
+// ─── Branded Header ─────────────────────────────────────
+const BOLD = "\x1b[1m";
+const TEAL_GLOW = "\x1b[38;2;0;170;175m";
+const PKG_VERSION = require("../package.json").version;
+const RULE = "━".repeat(48);
+
+function printHeader() {
+  console.log("");
+  console.log("");
+  console.log(`  ${TEAL}${BOLD}⬢  Q U A L I A${RESET}`);
+  console.log(`  ${DIM}${RULE}${RESET}`);
+  console.log(`  ${WHITE}Framework v${PKG_VERSION}${RESET}  ${DIM}·${RESET}  ${TEAL_GLOW}Qualia Solutions${RESET}`);
+  console.log(`  ${DIM}Plan → Build → Verify → Ship${RESET}`);
+  console.log(`  ${DIM}${RULE}${RESET}`);
+  console.log("");
+}
+
+function printSection(title) {
+  console.log("");
+  console.log(`  ${TEAL}▸${RESET} ${WHITE}${BOLD}${title}${RESET}`);
+  console.log(`  ${DIM}${"─".repeat(40)}${RESET}`);
+}
+
 // ─── Prompt for code ─────────────────────────────────────
 function askCode() {
   return new Promise((resolve) => {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
-    console.log("");
-    console.log(`${TEAL}  ⬢ Qualia Framework${RESET}`);
-    console.log(`${DIM}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}`);
-    console.log("");
+    printHeader();
     rl.question(`  ${WHITE}Enter install code:${RESET} `, (answer) => {
       rl.close();
       resolve(answer.trim());
@@ -127,10 +147,9 @@ async function main() {
   }
 
   console.log("");
-  log(`${GREEN}✓${RESET} ${WHITE}${member.name}${RESET} ${DIM}(${member.role})${RESET}`);
-  console.log("");
-  log(`Installing to ${WHITE}${CLAUDE_DIR}${RESET}`);
-  console.log("");
+  const roleColor = member.role === "OWNER" ? TEAL : GREEN;
+  console.log(`  ${GREEN}✓${RESET} ${WHITE}${BOLD}Welcome, ${member.name}${RESET}`);
+  console.log(`  ${DIM}  Role:${RESET} ${roleColor}${member.role}${RESET}  ${DIM}·${RESET}  ${DIM}Target:${RESET} ${WHITE}${CLAUDE_DIR}${RESET}`);
 
   // ─── Skills ──────────────────────────────────────────
   const skillsDir = path.join(FRAMEWORK_DIR, "skills");
@@ -138,7 +157,7 @@ async function main() {
     .readdirSync(skillsDir)
     .filter((d) => fs.statSync(path.join(skillsDir, d)).isDirectory());
 
-  log(`${WHITE}Skills${RESET}`);
+  printSection("Skills");
   for (const skill of skills) {
     try {
       copy(
@@ -152,7 +171,7 @@ async function main() {
   }
 
   // ─── Agents ────────────────────────────────────────────
-  log(`${WHITE}Agents${RESET}`);
+  printSection("Agents");
   const agentsDir = path.join(FRAMEWORK_DIR, "agents");
   for (const file of fs.readdirSync(agentsDir)) {
     try {
@@ -164,7 +183,7 @@ async function main() {
   }
 
   // ─── Rules ─────────────────────────────────────────────
-  log(`${WHITE}Rules${RESET}`);
+  printSection("Rules");
   const rulesDir = path.join(FRAMEWORK_DIR, "rules");
   for (const file of fs.readdirSync(rulesDir)) {
     try {
@@ -176,7 +195,7 @@ async function main() {
   }
 
   // ─── Hooks ─────────────────────────────────────────────
-  log(`${WHITE}Hooks${RESET}`);
+  printSection("Hooks");
   const hooksSource = path.join(FRAMEWORK_DIR, "hooks");
   const hooksDest = path.join(CLAUDE_DIR, "hooks");
   if (!fs.existsSync(hooksDest)) fs.mkdirSync(hooksDest, { recursive: true });
@@ -202,7 +221,7 @@ async function main() {
   }
 
   // ─── Templates ─────────────────────────────────────────
-  log(`${WHITE}Templates${RESET}`);
+  printSection("Templates");
   const tmplDir = path.join(FRAMEWORK_DIR, "templates");
   const tmplDest = path.join(CLAUDE_DIR, "qualia-templates");
   if (!fs.existsSync(tmplDest)) fs.mkdirSync(tmplDest, { recursive: true });
@@ -216,7 +235,7 @@ async function main() {
   }
 
   // ─── CLAUDE.md with role ───────────────────────────────
-  log(`${WHITE}CLAUDE.md${RESET}`);
+  printSection("Configuration");
   try {
     let claudeMd = fs.readFileSync(
       path.join(FRAMEWORK_DIR, "CLAUDE.md"),
@@ -232,7 +251,7 @@ async function main() {
   }
 
   // ─── Scripts ─────────────────────────────────────────────
-  log(`${WHITE}Scripts${RESET}`);
+  printSection("Scripts");
   try {
     const binDest = path.join(CLAUDE_DIR, "bin");
     if (!fs.existsSync(binDest)) fs.mkdirSync(binDest, { recursive: true });
@@ -268,7 +287,7 @@ async function main() {
   }
 
   // ─── Knowledge directory ─────────────────────────────────
-  log(`${WHITE}Knowledge${RESET}`);
+  printSection("Knowledge Base");
   const knowledgeDir = path.join(CLAUDE_DIR, "knowledge");
   if (!fs.existsSync(knowledgeDir)) fs.mkdirSync(knowledgeDir, { recursive: true });
   const knowledgeFiles = {
@@ -378,7 +397,7 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
   fs.writeFileSync(configFile, JSON.stringify(config, null, 2) + "\n");
 
   // ─── ERP API key (for report uploads) ──────────────────
-  log(`${WHITE}ERP integration${RESET}`);
+  printSection("ERP Integration");
   const erpKeyFile = path.join(CLAUDE_DIR, ".erp-api-key");
   if (!fs.existsSync(erpKeyFile)) {
     fs.writeFileSync(erpKeyFile, "qualia-claude-2026", { mode: 0o600 });
@@ -559,19 +578,18 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
 
   // ─── Summary ───────────────────────────────────────────
   console.log("");
-  console.log(`${TEAL}  ⬢ Installed ✓${RESET}`);
-  console.log(`${DIM}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}`);
-  console.log(`  ${WHITE}${member.name}${RESET} ${DIM}(${member.role})${RESET}`);
-  console.log(`  Skills:       ${WHITE}${skills.length}${RESET}`);
+  console.log(`  ${DIM}${RULE}${RESET}`);
+  console.log(`  ${TEAL}${BOLD}⬢  INSTALLED${RESET}`);
+  console.log(`  ${DIM}${RULE}${RESET}`);
+  console.log("");
+  console.log(`  ${WHITE}${BOLD}${member.name}${RESET}  ${DIM}·${RESET}  ${roleColor}${member.role}${RESET}  ${DIM}·${RESET}  ${DIM}v${PKG_VERSION}${RESET}`);
+  console.log("");
   const agentCount = fs.readdirSync(agentsDir).filter(f => f.endsWith('.md')).length;
-  console.log(`  Agents:       ${WHITE}${agentCount}${RESET} ${DIM}(planner, builder, verifier, qa-browser)${RESET}`);
-  console.log(`  Hooks:        ${WHITE}8${RESET} ${DIM}(session-start, auto-update, branch-guard, pre-push, block-env-edit, migration-guard, deploy-gate, pre-compact)${RESET}`);
-  console.log(`  Rules:        ${WHITE}${fs.readdirSync(rulesDir).length}${RESET} ${DIM}(security, frontend, design-reference, deployment)${RESET}`);
-  console.log(`  Scripts:      ${WHITE}3${RESET} ${DIM}(state.js, qualia-ui.js, statusline.js)${RESET}`);
-  console.log(`  Knowledge:    ${WHITE}3${RESET} ${DIM}(patterns, fixes, client prefs)${RESET}`);
-  console.log(`  Templates:    ${WHITE}${fs.readdirSync(tmplDir).length}${RESET}`);
-  console.log(`  Status line:  ${GREEN}✓${RESET}`);
-  console.log(`  CLAUDE.md:    ${GREEN}✓${RESET} ${DIM}(${member.role})${RESET}`);
+  const hookCount = fs.readdirSync(hooksSource).length;
+  const ruleCount = fs.readdirSync(rulesDir).length;
+  const tmplCount = fs.readdirSync(tmplDir).length;
+  console.log(`  ${DIM}Skills${RESET}    ${TEAL}${skills.length}${RESET}     ${DIM}Agents${RESET}  ${TEAL}${agentCount}${RESET}     ${DIM}Hooks${RESET}   ${TEAL}${hookCount}${RESET}`);
+  console.log(`  ${DIM}Rules${RESET}     ${TEAL}${ruleCount}${RESET}     ${DIM}Scripts${RESET} ${TEAL}3${RESET}     ${DIM}Templates${RESET} ${TEAL}${tmplCount}${RESET}`);
 
   if (errors > 0) {
     console.log("");
@@ -579,7 +597,20 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
   }
 
   console.log("");
-  console.log(`  Restart Claude Code, then type ${TEAL}/qualia${RESET} in any project.`);
+  console.log(`  ${DIM}${RULE}${RESET}`);
+  console.log(`  ${WHITE}${BOLD}Quick Start${RESET}`);
+  console.log(`  ${DIM}${RULE}${RESET}`);
+  console.log("");
+  console.log(`  ${TEAL}1.${RESET} ${WHITE}Restart Claude Code${RESET} ${DIM}(loads new settings)${RESET}`);
+  console.log(`  ${TEAL}2.${RESET} ${WHITE}cd into any project${RESET} ${DIM}and run${RESET} ${TEAL}claude${RESET}`);
+  console.log(`  ${TEAL}3.${RESET} ${WHITE}Type${RESET} ${TEAL}${BOLD}/qualia${RESET} ${DIM}— it tells you what to do next${RESET}`);
+  console.log("");
+  console.log(`  ${DIM}New project?${RESET}    ${TEAL}/qualia-new${RESET}`);
+  console.log(`  ${DIM}Quick fix?${RESET}      ${TEAL}/qualia-quick${RESET}`);
+  console.log(`  ${DIM}End of day?${RESET}     ${TEAL}/qualia-report${RESET} ${DIM}(mandatory)${RESET}`);
+  console.log(`  ${DIM}Stuck?${RESET}          ${TEAL}/qualia${RESET}`);
+  console.log("");
+  console.log(`  ${DIM}${RULE}${RESET}`);
   console.log("");
 }
 

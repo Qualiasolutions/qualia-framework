@@ -59,6 +59,9 @@ const ACTIONS = {
   task:       { label: "TASK",             glyph: "▪" },
   "skill-new": { label: "NEW SKILL",       glyph: "✦" },
   gaps:       { label: "GAP CLOSURE",      glyph: "⟐" },
+  welcome:    { label: "WELCOME",          glyph: "⬢" },
+  test:       { label: "TESTING",          glyph: "⊡" },
+  analytics:  { label: "ANALYTICS",        glyph: "◈" },
 };
 
 // ─── State Reading ───────────────────────────────────────

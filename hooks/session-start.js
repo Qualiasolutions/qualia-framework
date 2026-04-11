@@ -71,16 +71,39 @@ try {
   } else if (fs.existsSync(STATE_FILE)) {
     runUi("banner", "router");
     const next = getNextCommand();
-    if (next) runUi("info", `Run ${next} to continue`);
+    if (next) {
+      console.log("");
+      runUi("next", next);
+    }
   } else if (fs.existsSync(CONTINUE_HERE)) {
-    runUi("banner", "router");
-    runUi("warn", "Handoff found — read .continue-here.md to resume");
+    runUi("banner", "resume");
+    runUi("warn", "Previous session found — type /qualia-resume to pick up where you left off");
+    console.log("");
   } else {
+    // No project — show a welcoming first-run experience
+    const config = readConfig();
+    const name = config.installed_by || "";
     runUi("banner", "router");
-    runUi("info", "No project detected. Run /qualia-new to start.");
+    if (name) {
+      console.log(`  ${TEAL}Ready when you are, ${name}.${RESET}`);
+    }
+    console.log("");
+    console.log(`  ${DIM}Start here:${RESET}`);
+    console.log(`    ${TEAL}/qualia-new${RESET}    ${DIM}Set up a new project${RESET}`);
+    console.log(`    ${TEAL}/qualia${RESET}        ${DIM}What should I do next?${RESET}`);
+    console.log(`    ${TEAL}/qualia-quick${RESET}  ${DIM}Quick fix (skip planning)${RESET}`);
+    console.log("");
   }
 } catch {
   // Deliberately silent — hook must never fail
+}
+
+function readConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(HOME, ".claude", ".qualia-config.json"), "utf8"));
+  } catch {
+    return {};
+  }
 }
 
 function _trace(hookName, result, extra) {
