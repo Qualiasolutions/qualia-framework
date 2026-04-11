@@ -1,9 +1,9 @@
 {
-  "name": "qualia-framework-v2",
-  "version": "3.0.0",
+  "name": "qualia-framework",
+  "version": "3.1.0",
   "description": "Claude Code workflow framework by Qualia Solutions. Plan, build, verify, ship.",
   "bin": {
-    "qualia-framework-v2": "./bin/cli.js"
+    "qualia-framework": "./bin/cli.js"
   },
   "keywords": [
     "claude-code",
@@ -19,11 +19,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Qualiasolutions/qualia-framework-v2.git"
+    "url": "git+https://github.com/Qualiasolutions/qualia-framework.git"
   },
-  "homepage": "https://github.com/Qualiasolutions/qualia-framework-v2#readme",
+  "homepage": "https://github.com/Qualiasolutions/qualia-framework#readme",
   "scripts": {
-    "test": "bash tests/hooks.test.sh && bash tests/state.test.sh && bash tests/bin.test.sh && bash tests/statusline.test.sh"
+    "test": "node --test tests/runner.js"
   },
   "files": [
     "bin/",
@@ -33,6 +33,7 @@
     "skills/",
     "templates/",
     "tests/",
+    "docs/",
     "CLAUDE.md",
     "guide.md"
   ],
