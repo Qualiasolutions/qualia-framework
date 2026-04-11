@@ -224,11 +224,11 @@ try {
   if (AGENT) LINE1 += ` ${DIM}│${RESET} ${TEAL}⚡${AGENT}${RESET}`;
   if (WORKTREE) LINE1 += ` ${DIM}│${RESET} ${TEAL_DIM}⎇ ${WORKTREE}${RESET}`;
   if (PHASE_INFO) LINE1 += ` ${DIM}│${RESET} ${PHASE_INFO}`;
-  // Memory, hooks, skills — context indicators
+  // Memory, hooks, skills — context indicators with labels
   const contextParts = [];
-  if (MEMORY_COUNT > 0) contextParts.push(`${TEAL}⊙${RESET}${DIM}${MEMORY_COUNT}${RESET}`);
-  if (HOOKS_COUNT > 0) contextParts.push(`${TEAL_GLOW}⚙${RESET}${DIM}${HOOKS_COUNT}${RESET}`);
-  if (SKILLS_COUNT > 0) contextParts.push(`${TEAL_DIM}✦${RESET}${DIM}${SKILLS_COUNT}${RESET}`);
+  if (MEMORY_COUNT > 0) contextParts.push(`${DIM}mem${RESET} ${TEAL}${MEMORY_COUNT}${RESET}`);
+  if (HOOKS_COUNT > 0) contextParts.push(`${DIM}hooks${RESET} ${TEAL_GLOW}${HOOKS_COUNT}${RESET}`);
+  if (SKILLS_COUNT > 0) contextParts.push(`${DIM}skills${RESET} ${TEAL_DIM}${SKILLS_COUNT}${RESET}`);
   if (contextParts.length > 0) {
     LINE1 += ` ${DIM}│${RESET} ${contextParts.join(` ${DIM}·${RESET} `)}`;
   }
