@@ -706,10 +706,13 @@ function cmdValidatePlan(opts) {
   if (/^## Verification Contract/m.test(content)) {
     // Extract the contract section (from header to next ## or end of file)
     const contractSectionMatch = content.match(
-      /^## Verification Contract\n([\s\S]*?)(?=\n## (?!#)|$)/m
+      /^## Verification Contract\s*\n([\s\S]+)/m
     );
     if (contractSectionMatch) {
-      const contractSection = contractSectionMatch[1];
+      // Trim at the next ## heading that isn't ### (i.e., a new top-level section)
+      let contractSection = contractSectionMatch[1];
+      const nextH2 = contractSection.search(/\n## (?!#)/);
+      if (nextH2 !== -1) contractSection = contractSection.substring(0, nextH2);
       // Each contract starts with ### Contract for Task N
       const contractBlocks = contractSection.match(/^### Contract for Task \d+/gm);
       contractCount = contractBlocks ? contractBlocks.length : 0;
