@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Note: git tags for historical versions were not retained; commit references are approximate
 > and dates reflect commit history rather than npm publish timestamps.
 
+## [3.2.1] — 2026-04-12
+
+Patch release. Republishes the v3.2.0 feature set on top of the committed
+main branch. The original v3.2.0 was published from an uncommitted working
+tree earlier in the day and then rebased onto `origin/main` during cleanup;
+this release captures the post-rebase state — correct `repository.url`,
+fixed test assertions (hook count 8 → 7), and minor comment tweaks.
+
+No behavior changes from v3.2.0 for end users.
+
 ## [3.2.0] — 2026-04-12
 
 Sticky update notifications for employees, env access unblocked for the whole
