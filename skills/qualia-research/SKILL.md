@@ -50,7 +50,7 @@ Wait for their answer. Their answer defines the research question.
 
 ```
 Agent(prompt="
-Read your role: @~/.claude/agents/qualia-researcher.md
+Read your role: @~/.claude/agents/researcher.md
 
 <dimension>phase-specific</dimension>
 

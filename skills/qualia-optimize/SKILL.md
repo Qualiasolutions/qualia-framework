@@ -367,7 +367,7 @@ status: {clean|needs_attention|critical_issues}
 
 Commit:
 ```bash
-node ~/.claude/qualia-framework/bin/qualia-tools.js commit "docs: optimization report ({mode} mode, {critical} critical)" --files .planning/OPTIMIZE.md
+git add .planning/OPTIMIZE.md && git commit -m "docs: optimization report ({mode} mode, {critical} critical)"
 ```
 
 **Present results:**

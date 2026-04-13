@@ -61,7 +61,7 @@ Spawn the planner:
 
 ```
 Agent(prompt="
-Read your role: @~/.claude/agents/qualia-planner.md
+Read your role: @~/.claude/agents/planner.md
 
 <project_context>
 @.planning/PROJECT.md
@@ -104,7 +104,7 @@ Read the generated plan. Spawn the plan-checker:
 
 ```
 Agent(prompt="
-Read your role: @~/.claude/agents/qualia-plan-checker.md
+Read your role: @~/.claude/agents/plan-checker.md
 
 <plan_path>.planning/phase-{N}-plan.md</plan_path>
 <phase_goal>{goal from ROADMAP.md}</phase_goal>
@@ -125,7 +125,7 @@ For each revision:
 
 ```
 Agent(prompt="
-Read your role: @~/.claude/agents/qualia-planner.md
+Read your role: @~/.claude/agents/planner.md
 
 <revision_mode>true</revision_mode>
 <current_plan>@.planning/phase-{N}-plan.md</current_plan>

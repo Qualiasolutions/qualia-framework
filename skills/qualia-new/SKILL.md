@@ -236,7 +236,7 @@ mkdir -p .planning/research
 
 ```
 Agent(prompt="
-Read your role: @~/.claude/agents/qualia-researcher.md
+Read your role: @~/.claude/agents/researcher.md
 
 <dimension>stack</dimension>
 <domain>{inferred domain from PROJECT.md}</domain>
@@ -246,7 +246,7 @@ Read your role: @~/.claude/agents/qualia-researcher.md
 ", subagent_type="qualia-researcher", description="Stack research")
 
 Agent(prompt="
-Read your role: @~/.claude/agents/qualia-researcher.md
+Read your role: @~/.claude/agents/researcher.md
 
 <dimension>features</dimension>
 <domain>{inferred domain}</domain>
@@ -256,7 +256,7 @@ Read your role: @~/.claude/agents/qualia-researcher.md
 ", subagent_type="qualia-researcher", description="Features research")
 
 Agent(prompt="
-Read your role: @~/.claude/agents/qualia-researcher.md
+Read your role: @~/.claude/agents/researcher.md
 
 <dimension>architecture</dimension>
 <domain>{inferred domain}</domain>
@@ -266,7 +266,7 @@ Read your role: @~/.claude/agents/qualia-researcher.md
 ", subagent_type="qualia-researcher", description="Architecture research")
 
 Agent(prompt="
-Read your role: @~/.claude/agents/qualia-researcher.md
+Read your role: @~/.claude/agents/researcher.md
 
 <dimension>pitfalls</dimension>
 <domain>{inferred domain}</domain>
@@ -280,7 +280,7 @@ Read your role: @~/.claude/agents/qualia-researcher.md
 
 ```
 Agent(prompt="
-Read your role: @~/.claude/agents/qualia-research-synthesizer.md
+Read your role: @~/.claude/agents/research-synthesizer.md
 
 Merge the 4 research files at .planning/research/ into .planning/research/SUMMARY.md.
 Include roadmap implications.
@@ -332,7 +332,7 @@ Spawn the roadmapper agent:
 
 ```
 Agent(prompt="
-Read your role: @~/.claude/agents/qualia-roadmapper.md
+Read your role: @~/.claude/agents/roadmapper.md
 
 <task>
 Create REQUIREMENTS.md and ROADMAP.md for this project.

@@ -86,7 +86,7 @@ Spawn the roadmapper to create a new ROADMAP.md for the next milestone:
 
 ```
 Agent(prompt="
-Read your role: @~/.claude/agents/qualia-roadmapper.md
+Read your role: @~/.claude/agents/roadmapper.md
 
 <task>
 Create a new ROADMAP.md for the next milestone.
