@@ -28,36 +28,67 @@ npx qualia-framework traces     # View recent hook telemetry
 
 Open Claude Code in any project directory:
 
+### The Road (main flow)
+
 ```
-/qualia-new       # Set up a new project
-/qualia           # What should I do next?
-/qualia-idk       # I'm stuck — smart advisor
-/qualia-plan      # Plan the current phase
-/qualia-build     # Build it (parallel tasks)
-/qualia-verify    # Verify it actually works
-/qualia-design    # One-shot design transformation
-/qualia-debug     # Structured debugging
-/qualia-review    # Production audit
-/qualia-quick     # Skip planning, just do it
-/qualia-task      # Build one thing properly
+/qualia-new       # Set up a new project (deep questioning + research + roadmap)
+/qualia-plan N    # Plan phase N (with plan-checker validation loop)
+/qualia-build N   # Build phase N (wave-based parallel tasks)
+/qualia-verify N  # Verify phase N works (goal-backward + QA browser)
+...repeat plan/build/verify per phase...
 /qualia-polish    # Design and UX pass
 /qualia-ship      # Deploy to production
 /qualia-handoff   # Deliver to client
+```
+
+### Phase-specific depth (optional)
+
+```
+/qualia-discuss N   # Capture decisions before planning a complex phase
+/qualia-research N  # Deep-research a niche phase (Context7/WebFetch/WebSearch)
+/qualia-map         # Map existing codebase (brownfield projects)
+/qualia-milestone   # Close current milestone, open next
+```
+
+### Navigation & state
+
+```
+/qualia           # What should I do next? (smart router)
+/qualia-idk       # I'm stuck — smart advisor
 /qualia-pause     # Save session, continue later
 /qualia-resume    # Pick up where you left off
+```
+
+### Quality & debug
+
+```
+/qualia-debug     # Structured debugging
+/qualia-design    # One-shot design transformation
+/qualia-review    # Production audit
+/qualia-optimize  # Deep optimization pass
+/qualia-quick     # Skip planning, just do it
+/qualia-task      # Build one thing properly
+/qualia-test      # Generate or run tests
+```
+
+### Knowledge & reporting
+
+```
 /qualia-learn     # Save a pattern, fix, or client pref
-/qualia-report    # Log your work (mandatory)
+/qualia-report    # Log your work (mandatory end of day)
+/qualia-help      # Open the framework reference in your browser
 ```
 
 See `guide.md` for the full developer guide.
 
-## What's Inside
+## What's Inside (v3.3.0)
 
-- **19 skills** — slash commands from setup to handoff, plus debugging, design, review, knowledge, session management, and skill authoring
-- **4 agents** — planner, builder, verifier, qa-browser (each in fresh context)
-- **8 hooks** — session start, branch guard, pre-push tracking sync, env protection, migration guard, deploy gate, pre-compact state save, auto-update (all Node.js — cross-platform)
-- **4 rules** — security, frontend, design-reference, deployment
-- **5 templates** — tracking.json, state.md, project.md, plan.md, DESIGN.md
+- **26 skills** — slash commands from setup to handoff, plus debugging, design, review, knowledge, session management, skill authoring, and the new deep-flow additions (discuss, research, map, milestone)
+- **8 agents** — planner, builder, verifier, qa-browser, researcher, research-synthesizer, roadmapper, plan-checker (each in fresh context)
+- **7 hooks** — session start, branch guard, pre-push tracking sync, migration guard, deploy gate, pre-compact state save, auto-update (all Node.js — cross-platform)
+- **5 rules** — security, frontend, design-reference, deployment, infrastructure
+- **12+ templates** — project.md, plan.md, state.md, DESIGN.md, tracking.json, requirements.md, roadmap.md, phase-context.md, 4× research-project templates, 4× project-type templates
+- **1 reference** — questioning.md methodology for deep project initialization
 
 ## Supported Platforms
 

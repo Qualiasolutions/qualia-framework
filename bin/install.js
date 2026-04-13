@@ -81,6 +81,68 @@ function copy(src, dest) {
   fs.copyFileSync(src, dest);
 }
 
+// Recursively copy a directory tree from src to dest.
+// Skips hidden files (dot-prefixed) to avoid syncing .DS_Store, editor temp files, etc.
+function copyTree(src, dest) {
+  if (!fs.existsSync(src)) return;
+  if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    if (entry.name.startsWith(".")) continue;
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyTree(srcPath, destPath);
+    } else if (entry.isFile()) {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+// Surgically remove orphaned v2.6 install cruft from ~/.claude/ on upgrade.
+// v2.6 installed a separate ~/.claude/qualia-framework/ directory with workflows/,
+// references/, assets/, bin/qualia-tools.js. v3 doesn't use any of that — it was
+// just never cleaned up. Also removes broken qualia-*.md agents from the v2.6 era
+// that reference /home/qualia/ paths which don't exist.
+function cleanupLegacyV26() {
+  const removed = { dirs: [], files: [] };
+
+  // Remove the entire v2.6 framework leftover directory.
+  const v26Dir = path.join(CLAUDE_DIR, "qualia-framework");
+  try {
+    if (fs.existsSync(v26Dir)) {
+      const versionFile = path.join(v26Dir, "VERSION");
+      // Safety: only remove if it has the v2.6 shape (VERSION file exists)
+      if (fs.existsSync(versionFile)) {
+        fs.rmSync(v26Dir, { recursive: true, force: true });
+        removed.dirs.push("~/.claude/qualia-framework/ (v2.6 leftover)");
+      }
+    }
+  } catch {}
+
+  // Remove broken v2.6 agent files that reference /home/qualia/ paths.
+  // The canonical v3 agents ship with the framework (planner.md, builder.md, etc.)
+  // — scan all qualia-*.md files in agents/ and remove any that contain the
+  // /home/qualia/ signature (v2.6 broken absolute paths).
+  const agentsDest = path.join(CLAUDE_DIR, "agents");
+  try {
+    if (fs.existsSync(agentsDest)) {
+      for (const name of fs.readdirSync(agentsDest)) {
+        if (!name.startsWith("qualia-") || !name.endsWith(".md")) continue;
+        const p = path.join(agentsDest, name);
+        try {
+          const content = fs.readFileSync(p, "utf8");
+          if (content.includes("/home/qualia/.claude")) {
+            fs.unlinkSync(p);
+            removed.files.push(`agents/${name}`);
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+
+  return removed;
+}
+
 // ─── Branded Header ─────────────────────────────────────
 const BOLD = "\x1b[1m";
 const TEAL_GLOW = "\x1b[38;2;0;170;175m";
@@ -227,18 +289,52 @@ async function main() {
     }
   }
 
-  // ─── Templates ─────────────────────────────────────────
+  // ─── Templates (recursive — supports nested projects/ and research-project/) ─
   printSection("Templates");
   const tmplDir = path.join(FRAMEWORK_DIR, "templates");
   const tmplDest = path.join(CLAUDE_DIR, "qualia-templates");
   if (!fs.existsSync(tmplDest)) fs.mkdirSync(tmplDest, { recursive: true });
-  for (const file of fs.readdirSync(tmplDir)) {
+  for (const entry of fs.readdirSync(tmplDir, { withFileTypes: true })) {
+    if (entry.name.startsWith(".")) continue;
+    const srcPath = path.join(tmplDir, entry.name);
+    const destPath = path.join(tmplDest, entry.name);
     try {
-      copy(path.join(tmplDir, file), path.join(tmplDest, file));
-      ok(file);
+      if (entry.isDirectory()) {
+        copyTree(srcPath, destPath);
+        ok(`${entry.name}/ (directory)`);
+      } else {
+        copy(srcPath, destPath);
+        ok(entry.name);
+      }
     } catch (e) {
-      warn(`${file} — ${e.message}`);
+      warn(`${entry.name} — ${e.message}`);
     }
+  }
+
+  // ─── References (methodology docs loaded by skills at runtime) ────
+  printSection("References");
+  const refDir = path.join(FRAMEWORK_DIR, "references");
+  const refDest = path.join(CLAUDE_DIR, "qualia-references");
+  if (fs.existsSync(refDir)) {
+    if (!fs.existsSync(refDest)) fs.mkdirSync(refDest, { recursive: true });
+    for (const file of fs.readdirSync(refDir)) {
+      try {
+        copy(path.join(refDir, file), path.join(refDest, file));
+        ok(file);
+      } catch (e) {
+        warn(`${file} — ${e.message}`);
+      }
+    }
+  } else {
+    log(`${DIM}(no references/ in framework — skipping)${RESET}`);
+  }
+
+  // ─── Cleanup legacy v2.6 install cruft ────────────────────
+  const legacy = cleanupLegacyV26();
+  if (legacy.dirs.length > 0 || legacy.files.length > 0) {
+    printSection("Cleanup (v2.6 leftover)");
+    for (const d of legacy.dirs) ok(`removed ${d}`);
+    for (const f of legacy.files) ok(`removed ${f}`);
   }
 
   // ─── CLAUDE.md with role ───────────────────────────────
