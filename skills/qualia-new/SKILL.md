@@ -1,323 +1,468 @@
 ---
 name: qualia-new
-description: "Set up a new project from scratch — interactive wizard with step-by-step questioning. Use when starting any new client project."
+description: "Set up a new project from scratch — deep questioning, parallel research, REQUIREMENTS.md, ROADMAP.md, approval gate. Use when starting any new client project."
 ---
 
-# /qualia-new — New Project Wizard
+# /qualia-new — New Project
 
-Interactive project setup. Ask one step at a time using AskUserQuestion. Never dump all questions at once.
+Comprehensive project initialization. Deep questioning → 4 parallel research agents → REQUIREMENTS.md with REQ-IDs → ROADMAP.md with phases → approval → scaffold → ready to plan Phase 1.
+
+**Flags:**
+- `/qualia-new` — full flow (default)
+- `/qualia-new --quick` — 4-phase flat wizard (faster, less rigorous, for trivial projects)
 
 ## Process
 
 ### Step 0. Banner
 
-Print this FIRST, before anything else:
-
 ```bash
 node ~/.claude/bin/qualia-ui.js banner new
 ```
 
-Then say: **"Let's build something. Tell me what you're making."**
+Then say: **"Let's build something. Tell me what you want to make."**
 
-Wait for the user's free-text answer. Do NOT use AskUserQuestion here — let them talk naturally.
+Wait for free-text answer. Do NOT use AskUserQuestion here — let them talk naturally.
 
-### Step 1. Project Type
+### Step 0.5. Brownfield Check
 
-After they describe what they want, use AskUserQuestion:
-
-```
-question: "What type of project is this?"
-header: "Type"
-options:
-  - label: "Website / Web App"
-    description: "Landing page, SaaS, dashboard, marketing site, portal"
-  - label: "AI Agent"
-    description: "Chatbot, AI assistant, tool-calling agent, RAG system"
-  - label: "Voice Agent"
-    description: "Phone agent, VAPI, Retell AI, ElevenLabs call bot"
-  - label: "Mobile App"
-    description: "iOS, Android, React Native, Expo"
-```
-
-### Step 2. Core Features
-
-Based on their description, use AskUserQuestion with multiSelect: true:
-
-```
-question: "Which features do you need?"
-header: "Features"
-multiSelect: true
-options (pick 4 most relevant from):
-  - "Auth & accounts" — Login, signup, user management
-  - "Database & CRUD" — Data storage, tables, admin panel
-  - "Payments" — Stripe, subscriptions, checkout
-  - "AI / LLM" — Chat, completions, embeddings, RAG
-  - "Voice calls" — Inbound/outbound calls, IVR, telephony
-  - "Email / notifications" — Transactional email, SMS, push
-  - "File uploads" — Images, documents, S3/storage
-  - "Admin dashboard" — Internal tools, analytics, reporting
-  - "API / integrations" — Third-party APIs, webhooks, CRM sync
-  - "Real-time" — WebSockets, live updates, presence
-```
-
-Pick the 4 options most relevant to what they described. Always offer the most likely ones.
-
-### Step 3. Design Direction
-
-Use AskUserQuestion with previews:
-
-```
-question: "What's the design vibe?"
-header: "Design"
-options:
-  - label: "Dark & Bold"
-    description: "Dark backgrounds, neon accents, strong contrast"
-    preview: |
-      ┌──────────────────────────────┐
-      │  ██████████████████████████  │
-      │  ██  DARK BG + TEAL GLOW ██  │
-      │  ██████████████████████████  │
-      │                              │
-      │  ░░░░░░░░░░░░░░░░░░░░░░░░  │
-      │  Sharp cards, glass effects  │
-      │  Neon borders, deep shadows  │
-      └──────────────────────────────┘
-
-  - label: "Clean & Minimal"
-    description: "White space, subtle shadows, refined typography"
-    preview: |
-      ┌──────────────────────────────┐
-      │                              │
-      │     Clean & Minimal          │
-      │     ─────────────            │
-      │                              │
-      │  Generous whitespace         │
-      │  Subtle borders              │
-      │  Light, airy feel            │
-      └──────────────────────────────┘
-
-  - label: "Colorful & Playful"
-    description: "Gradients, rounded shapes, vibrant palette"
-    preview: |
-      ┌──────────────────────────────┐
-      │  ⬢ ● ▲ ■  COLORFUL          │
-      │                              │
-      │  ╭──────╮  ╭──────╮         │
-      │  │ Card │  │ Card │         │
-      │  ╰──────╯  ╰──────╯         │
-      │  Rounded, gradient fills     │
-      │  Fun, approachable           │
-      └──────────────────────────────┘
-
-  - label: "Corporate / Professional"
-    description: "Structured layouts, trust signals, enterprise feel"
-    preview: |
-      ┌──────────────────────────────┐
-      │  LOGO    Nav  Nav  [CTA]     │
-      │  ────────────────────────    │
-      │  ┌────┐ ┌────┐ ┌────┐       │
-      │  │Feat│ │Feat│ │Feat│       │
-      │  └────┘ └────┘ └────┘       │
-      │  Structured, trustworthy     │
-      │  Clear hierarchy             │
-      └──────────────────────────────┘
-```
-
-### Step 4. Stack Confirmation
-
-Use AskUserQuestion:
-
-```
-question: "Stack — go with the Qualia default?"
-header: "Stack"
-options:
-  - label: "Qualia Stack (Recommended)"
-    description: "Next.js 16 + React 19 + TypeScript + Supabase + Vercel"
-  - label: "Qualia + extras"
-    description: "Default stack plus additional integrations (Stripe, VAPI, etc.)"
-  - label: "Custom stack"
-    description: "I have specific tech requirements"
-```
-
-If "Custom stack" — ask what they need.
-If "Qualia + extras" — ask which integrations.
-
-### Step 5. Scope & Client
-
-Use AskUserQuestion:
-
-```
-question: "Is this a client project or internal?"
-header: "Client"
-options:
-  - label: "Client project"
-    description: "External client — will need handoff and credentials"
-  - label: "Internal / Qualia"
-    description: "Our own product or tool"
-  - label: "Personal / Side project"
-    description: "No formal client"
-```
-
-If client project, ask: **"What's the client's name?"** (free text, no AskUserQuestion)
-
-After capturing the client name, check for saved preferences:
+Before questioning, detect if we're in an existing codebase:
 
 ```bash
-cat ~/.claude/knowledge/client-prefs.md 2>/dev/null
+test -f package.json && echo "HAS_PACKAGE"
+test -d .git && echo "HAS_GIT"
+ls *.ts *.tsx *.js *.jsx *.py 2>/dev/null | head -5
+test -f .planning/codebase/README.md && echo "ALREADY_MAPPED"
 ```
 
-If there's an entry for this client, show it to the user: *"I have notes on {client} — {preferences summary}. Applying these to the project defaults unless you say otherwise."* Then use those preferences in Step 8a (Design System) and Step 9 (Roadmap).
+**If existing code detected AND not already mapped:**
 
-### Step 6. Confirm & Scaffold
+- header: "Existing Code"
+- question: "I see existing code here. Map the codebase first so I understand what's already built?"
+- options:
+  - "Map codebase first" — Run /qualia-map, then continue (recommended for brownfield)
+  - "Skip mapping" — Treat as greenfield anyway
 
-Present a summary:
+If "Map codebase first": invoke the `qualia-map` skill inline, wait for completion, then continue to Step 1.
 
-```
-⬢ QUALIA ▸ PROJECT SUMMARY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### Step 1. Deep Questioning
 
-  Project    {name}
-  Type       {type}
-  Client     {client}
-  Stack      {stack}
-  Features   {feature list}
-  Design     {design direction}
-```
+**Load the questioning methodology as your guide:**
 
-Use AskUserQuestion:
-
-```
-question: "Ready to scaffold?"
-header: "Confirm"
-options:
-  - label: "Let's go"
-    description: "Create the project now"
-  - label: "Change something"
-    description: "Go back and adjust"
+```bash
+cat ~/.claude/qualia-references/questioning.md 2>/dev/null
 ```
 
-### Step 7. Execute Scaffold
+Follow that methodology:
+- Start with their free-text answer from Step 0
+- Follow energy — dig into what excited them
+- Challenge vagueness — never accept fuzzy answers
+- Make abstract concrete — "walk me through using this"
+- Surface motivation — "what prompted this?"
+- Check the 4-item context checklist mentally (what, why, who, done)
 
-On confirmation, scaffold:
+**Use AskUserQuestion for forks with 2-4 concrete interpretations.** Use free text when you want them to think freely.
+
+**Decision gate** — when you could write a clear PROJECT.md:
+
+- header: "Ready?"
+- question: "I think I understand what you're building. Ready to create PROJECT.md?"
+- options:
+  - "Create PROJECT.md" — Let's move forward
+  - "Keep exploring" — I want to share more
+
+Loop until "Create PROJECT.md".
+
+### Step 2. Detect Project Type + Load Template
+
+From the questioning answers, infer project type:
+
+- "website", "landing page", "marketing site", "SaaS", "dashboard", "portal" → `website`
+- "chatbot", "AI assistant", "chat agent", "RAG", "agent" → `ai-agent`
+- "voice agent", "phone agent", "call bot", "VAPI", "Retell" → `voice-agent`
+- "mobile app", "iOS", "Android", "React Native", "Expo" → `mobile-app`
+
+**If a type matches:**
+
+```bash
+cat ~/.claude/qualia-templates/projects/{type}.md
+```
+
+This template gives suggested phase structure and category names the roadmapper will use.
+
+**If no type matches:** continue without a template — the roadmapper will derive structure from requirements.
+
+Store `template_type` (or `null`) for use in Step 6.
+
+### Step 3. Design Direction (frontend only)
+
+If the project involves frontend work (most do), capture design direction:
+
+- header: "Design"
+- question: "What's the design vibe?"
+- options:
+  - "Dark & Bold" — Dark backgrounds, neon accents, strong contrast
+  - "Clean & Minimal" — White space, subtle shadows, refined typography
+  - "Colorful & Playful" — Gradients, rounded shapes, vibrant palette
+  - "Corporate / Professional" — Structured, trust signals, enterprise feel
+
+Also ask (free text): "Any brand colors or reference sites I should look at?"
+
+Store these for Step 7 (DESIGN.md generation).
+
+### Step 4. Client Context
+
+- header: "Client"
+- question: "Client project or internal?"
+- options:
+  - "Client project" — External client, needs handoff
+  - "Internal / Qualia" — Our own product
+  - "Personal / Side project" — No formal client
+
+If client, ask their name (free text) and check for saved prefs:
+```bash
+cat ~/.claude/knowledge/client-prefs.md 2>/dev/null | grep -A 10 "{client name}"
+```
+
+If prefs found, mention: *"I have notes on {client} — {summary}. Applying these to defaults unless you say otherwise."*
+
+### Step 5. Write PROJECT.md
+
+Create `.planning/PROJECT.md` from the template:
 
 ```bash
 mkdir -p .planning
+cat ~/.claude/qualia-templates/project.md
+```
 
-# Initialize git if needed
+Fill in with questioning answers. Include:
+
+```markdown
+# {Project Name}
+
+## Client
+{name or "Internal" or "Personal"}
+
+## What We're Building
+{one-paragraph description from questioning}
+
+## Core Value
+{the ONE thing that must work}
+
+## Requirements
+### Validated
+{if brownfield, inferred from codebase map; else "(none yet)"}
+
+### Active (hypotheses)
+- [ ] {requirement 1 — from questioning}
+- [ ] {requirement 2}
+- [ ] {requirement 3}
+
+### Out of Scope
+- {exclusion 1}
+
+## Stack
+{from questioning — default: Next.js 16 + React 19 + TypeScript + Supabase + Vercel}
+
+## Design Direction
+{from Step 3}
+
+## Decisions
+| Decision | Rationale |
+|----------|-----------|
+| {choice from questioning} | {why} |
+
+---
+*Created: {date}*
+```
+
+Commit:
+```bash
 git init 2>/dev/null
-
-# Create Next.js project (if website/ai-agent)
-npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir=false --import-alias="@/*" --no-git
-
-# Or Expo project (if mobile-app)
-# npx create-expo-app . --template blank-typescript
+git add .planning/PROJECT.md
+git commit -m "docs: initialize project"
 ```
 
-Create GitHub repo:
+### Step 6. Create config.json
+
+Write `.planning/config.json`:
+
+```json
+{
+  "mode": "interactive",
+  "depth": "standard",
+  "template_type": "{detected or null}",
+  "workflow": {
+    "research": true,
+    "plan_check": true,
+    "verifier": true
+  }
+}
+```
+
+**If the user says "quick" or the project is clearly trivial (landing page with 2 sections, 1 form):** set `depth: "quick"` and `workflow.research: false`.
+
+### Step 7. Create DESIGN.md (frontend projects)
+
+If frontend work is involved, generate `.planning/DESIGN.md` from `~/.claude/qualia-templates/DESIGN.md` using the design direction from Step 3. Fill in:
+- Palette (concrete hex values, not placeholders)
+- Typography (distinctive fonts, NOT Inter/Roboto/system-ui)
+- Spacing (8px grid)
+- Motion approach
+- Component patterns
+
+Commit:
 ```bash
-gh repo create {project-name} --private --source=. --push
+git add .planning/DESIGN.md .planning/config.json
+git commit -m "docs: design direction + config"
 ```
 
-Link Vercel:
+### Step 8. Run Research (if enabled)
+
+Check `.planning/config.json` → `workflow.research`. If `true`, proceed. If `false`, skip to Step 9.
+
+**Banner:**
 ```bash
-vercel link
+node ~/.claude/bin/qualia-ui.js banner research
 ```
 
-Create Supabase project (via MCP or manual).
+Say: **"Running 4 parallel research agents (stack, features, architecture, pitfalls)..."**
 
-### Step 8. Create Planning Files
+**Create research dir:**
+```bash
+mkdir -p .planning/research
+```
 
-**`.planning/PROJECT.md`** — use template, fill from answers:
-- Client, description, requirements (from features), out of scope, stack, design direction, decisions
+**Spawn 4 researchers in parallel** (single message, 4 Agent tool calls):
 
-### Step 8a. Create Design System
+```
+Agent(prompt="
+Read your role: @~/.claude/agents/qualia-researcher.md
 
-Generate **`.planning/DESIGN.md`** using `~/.claude/qualia-templates/DESIGN.md` as the template.
+<dimension>stack</dimension>
+<domain>{inferred domain from PROJECT.md}</domain>
+<project_context>{PROJECT.md summary}</project_context>
+<milestone_context>greenfield</milestone_context>
+<output_path>.planning/research/STACK.md</output_path>
+", subagent_type="qualia-researcher", description="Stack research")
 
-Fill in based on the design direction chosen in Step 3:
+Agent(prompt="
+Read your role: @~/.claude/agents/qualia-researcher.md
 
-**Dark & Bold:**
-- Palette: dark backgrounds (#0a0a0a, #141414), vibrant accent (teal #00d4aa, amber #f59e0b, etc.)
-- Typography: bold display font + clean body font (e.g., "Plus Jakarta Sans" + "DM Sans")
-- Effects: glass morphism, noise textures, glow effects
-- Motion: expressive — staggered fades, parallax hints
+<dimension>features</dimension>
+<domain>{inferred domain}</domain>
+<project_context>{PROJECT.md summary}</project_context>
+<milestone_context>greenfield</milestone_context>
+<output_path>.planning/research/FEATURES.md</output_path>
+", subagent_type="qualia-researcher", description="Features research")
 
-**Clean & Minimal:**
-- Palette: light backgrounds (#fafafa, #ffffff), single muted accent
-- Typography: refined serif or geometric sans (e.g., "Outfit" + "Source Serif 4")
-- Effects: subtle shadows, thin borders
-- Motion: minimal — fades only, no stagger
+Agent(prompt="
+Read your role: @~/.claude/agents/qualia-researcher.md
 
-**Colorful & Playful:**
-- Palette: vibrant multi-color, warm backgrounds
-- Typography: rounded friendly fonts (e.g., "Nunito" + "Quicksand")
-- Effects: gradients, rounded shapes, illustrations
-- Motion: expressive — bouncy spring easing, scale on hover
+<dimension>architecture</dimension>
+<domain>{inferred domain}</domain>
+<project_context>{PROJECT.md summary}</project_context>
+<milestone_context>greenfield</milestone_context>
+<output_path>.planning/research/ARCHITECTURE.md</output_path>
+", subagent_type="qualia-researcher", description="Architecture research")
 
-**Corporate / Professional:**
-- Palette: navy/charcoal base, conservative accent (blue, green)
-- Typography: trustworthy geometric (e.g., "Manrope" + "IBM Plex Sans")
-- Effects: clean borders, subtle shadows, structured grids
-- Motion: subtle — smooth fades, no bounce
+Agent(prompt="
+Read your role: @~/.claude/agents/qualia-researcher.md
 
-**Always include in DESIGN.md:**
-- Concrete CSS variable values (not placeholders)
-- Google Fonts import URL
-- Spacing scale (8px grid)
-- Component patterns (buttons, inputs, cards)
-- Responsive approach
-- Anti-patterns to avoid
+<dimension>pitfalls</dimension>
+<domain>{inferred domain}</domain>
+<project_context>{PROJECT.md summary}</project_context>
+<milestone_context>greenfield</milestone_context>
+<output_path>.planning/research/PITFALLS.md</output_path>
+", subagent_type="qualia-researcher", description="Pitfalls research")
+```
 
-### Step 8b. Initialize State
+**After all 4 complete, spawn synthesizer:**
+
+```
+Agent(prompt="
+Read your role: @~/.claude/agents/qualia-research-synthesizer.md
+
+Merge the 4 research files at .planning/research/ into .planning/research/SUMMARY.md.
+Include roadmap implications.
+", subagent_type="qualia-research-synthesizer", description="Synthesize research")
+```
+
+**Commit research:**
+```bash
+git add .planning/research/
+git commit -m "docs: research synthesis (4 dimensions)"
+```
+
+**Show key findings:**
+```bash
+node ~/.claude/bin/qualia-ui.js ok "Research complete"
+```
+Display top 3 findings from SUMMARY.md (stack recommendation, table stakes, top pitfall).
+
+### Step 9. Feature Scoping
+
+Read `.planning/research/FEATURES.md` (if exists) and present the feature landscape:
+
+For each category, use AskUserQuestion:
+
+- header: "{Category name}"
+- question: "Which {category} features are in v1?"
+- multiSelect: true
+- options:
+  - Each feature from FEATURES.md with brief description
+  - "None for v1" — defer entire category
+
+Track:
+- Selected → v1 requirements
+- Unselected table stakes → v2 (users expect these)
+- Unselected differentiators → out of scope
+
+**If research was skipped:** Ask free text: "What are the main things users need to be able to do?" — then probe for specifics on each capability mentioned.
+
+Gather any additional requirements the user wants that research missed.
+
+### Step 10. Run Roadmapper
+
+**Banner:**
+```bash
+node ~/.claude/bin/qualia-ui.js banner roadmap
+```
+
+Spawn the roadmapper agent:
+
+```
+Agent(prompt="
+Read your role: @~/.claude/agents/qualia-roadmapper.md
+
+<task>
+Create REQUIREMENTS.md and ROADMAP.md for this project.
+
+User-scoped v1 features:
+{list of features selected in Step 9, grouped by category}
+
+Template type: {template_type from config.json}
+If template type is set, use ~/.claude/qualia-templates/projects/{type}.md as the phase structure starting point.
+
+Write files immediately:
+- .planning/REQUIREMENTS.md
+- .planning/ROADMAP.md
+- Update STATE.md via: node ~/.claude/bin/state.js init --project '{name}' --client '{client}' --type '{type}' --phases '<JSON>' --total_phases <N>
+</task>
+", subagent_type="qualia-roadmapper", description="Create roadmap")
+```
+
+### Step 11. Review Roadmap
+
+Read the generated `ROADMAP.md`. Present it inline:
+
+```
+## Proposed Roadmap
+
+**{N} phases** | **{X} requirements mapped** | All v1 requirements covered ✓
+
+| # | Phase | Goal | Requirements | Success Criteria |
+|---|-------|------|--------------|------------------|
+| 1 | {name} | {goal} | {REQ-IDs} | {count} |
+| 2 | {name} | {goal} | {REQ-IDs} | {count} |
+...
+
+### Phase 1: {Name}
+Goal: {goal}
+Requirements: {REQ-IDs}
+Success criteria:
+1. {criterion}
+2. {criterion}
+3. {criterion}
+
+### Phase 2: {Name}
+...
+```
+
+### Step 12. Approval Gate
+
+- header: "Roadmap"
+- question: "Does this roadmap work for you?"
+- options:
+  - "Approve" — Commit and continue
+  - "Adjust phases" — Tell me what to change
+  - "Review full file" — Show raw ROADMAP.md
+
+**If "Adjust":**
+- Get the user's feedback
+- Re-spawn the roadmapper with revision context
+- Show revised roadmap
+- Loop until approved
+
+**If "Review full file":** `cat .planning/ROADMAP.md`, then re-ask.
+
+**If "Approve":**
 
 ```bash
-node ~/.claude/bin/state.js init --project "{name}" --client "{client}" --type "{type}" --assigned-to "{employee}" --phases '[{phases JSON array from roadmap}]'
-```
-This creates both STATE.md and tracking.json with consistent formatting.
-Do NOT manually edit these files — state.js handles both.
-
-### Step 9. Create Roadmap
-
-Based on project type and features, create phases in STATE.md:
-
-**Typical website:**
-1. Foundation — Auth, database schema, base layout
-2. Core — Main features
-3. Content — Pages, copy, media
-4. Polish — Design, animations, responsive
-
-**Typical AI agent:**
-1. Foundation — Auth, database, API routes
-2. Agent — AI logic, prompts, tool calling
-3. Interface — Chat UI, streaming, history
-4. Polish — Error handling, rate limiting, monitoring
-
-**Typical voice agent:**
-1. Foundation — Webhook handler, Supabase, auth
-2. Voice — VAPI/Retell config, call flow, prompts
-3. Integration — CRM sync, logging, analytics
-4. Polish — Latency optimization, error handling
-
-Present the roadmap. Use AskUserQuestion:
-
-```
-question: "Does this roadmap look right?"
-header: "Roadmap"
-options:
-  - label: "Looks good"
-    description: "Lock it in and start planning Phase 1"
-  - label: "Adjust phases"
-    description: "I want to change the phase breakdown"
+git add .planning/REQUIREMENTS.md .planning/ROADMAP.md .planning/STATE.md
+git commit -m "docs: requirements + roadmap ({N} phases)"
 ```
 
-### Step 10. Commit & Output
+### Step 13. Environment Setup
 
+Check what the project needs (from PROJECT.md stack + research):
+
+- Supabase project? Guide through `supabase link` or create new
+- Vercel project? Guide through `vercel link`
+- Env vars? Create `.env.local` with placeholders
+
+Only walk through what's needed. Skip if the user says "I'll handle env myself."
+
+Commit:
 ```bash
-git add .planning/
-git commit -m "init: project setup with planning files"
-git push -u origin main
+git add .gitignore
+git commit -m "chore: environment setup" 2>/dev/null
 ```
+
+### Step 14. Done
 
 ```bash
 node ~/.claude/bin/qualia-ui.js end "PROJECT READY" "/qualia-plan 1"
 ```
+
+Show summary:
+
+```
+⬢ PROJECT INITIALIZED
+
+| Artifact       | Location                    |
+|----------------|-----------------------------|
+| Project        | .planning/PROJECT.md        |
+| Config         | .planning/config.json       |
+| Requirements   | .planning/REQUIREMENTS.md   |
+| Roadmap        | .planning/ROADMAP.md        |
+| Design         | .planning/DESIGN.md         |
+| Research       | .planning/research/         |
+| State          | .planning/STATE.md          |
+
+{N} phases | {X} requirements | Ready to build
+
+▶ Next: /qualia-plan 1 — plan Phase 1: {phase 1 name}
+```
+
+## --quick Flag (Fast Path)
+
+If invoked as `/qualia-new --quick`, run a 4-phase flat flow instead of the full comprehensive flow:
+
+1. Banner + "What do you want to make?"
+2. 4-step wizard (type / features / design / client)
+3. Fixed 4 phases based on project type (Foundation / Core / Content / Polish)
+4. Skip: research, REQUIREMENTS.md, plan-check
+5. Still creates: PROJECT.md, ROADMAP.md (simplified), STATE.md, DESIGN.md
+6. Route to `/qualia-plan 1`
+
+Use `--quick` for: landing pages with 1-2 sections, throwaway prototypes, personal experiments.
+Do NOT use `--quick` for: client projects, anything with compliance/regulatory stakes, anything longer than 1 week.
+
+## Rules
+
+1. **Questioning is not a checklist.** Follow the thread, don't follow a script.
+2. **Research runs automatically** unless `depth: quick` in config. Don't ask the user every time.
+3. **Approval gate is mandatory.** Never commit a roadmap the user hasn't seen.
+4. **STATE.md updates go through state.js init.** Never edit STATE.md by hand — the statusline reads tracking.json which state.js writes atomically.
+5. **Don't skip the research synthesizer.** Four research files without a synthesis = unread bloat.
+6. **Inline skill invocation.** When Step 0.5 offers `/qualia-map`, INVOKE it inline — don't exit and tell the user to re-run.

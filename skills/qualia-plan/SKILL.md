@@ -1,101 +1,206 @@
 ---
 name: qualia-plan
-description: "Plan the current phase — spawns planner agent in fresh context. Use when ready to plan a phase."
+description: "Plan the current phase — spawns planner, validates with plan-checker in a revision loop (max 3), optionally runs discuss/research first. Use when ready to plan a phase."
 ---
 
 # /qualia-plan — Plan a Phase
 
-Spawn a planner agent to break the current phase into executable tasks.
+Spawn a planner agent to break the current phase into executable tasks, then validate the plan with a checker (up to 3 revision cycles) before routing to build.
 
 ## Usage
+
 `/qualia-plan` — plan the next unplanned phase
-`/qualia-plan {N}` — plan specific phase
+`/qualia-plan {N}` — plan specific phase N
 `/qualia-plan {N} --gaps` — plan fixes for verification failures
+`/qualia-plan {N} --skip-check` — skip the plan-checker validation loop (not recommended)
 
 ## Process
 
-### 1. Determine Phase & Load Knowledge
+### 1. Determine Phase & Load Context
 
 ```bash
 cat .planning/STATE.md 2>/dev/null
+cat .planning/ROADMAP.md 2>/dev/null
+cat .planning/PROJECT.md 2>/dev/null
 cat ~/.claude/knowledge/learned-patterns.md 2>/dev/null
 cat ~/.claude/knowledge/client-prefs.md 2>/dev/null
 ```
 
 If no phase number given, use the current phase from STATE.md.
-If any learned patterns apply to this phase's work, pass them to the planner in the spawn prompt under a `## Relevant Learnings` section.
-If this is a client project and `client-prefs.md` has an entry for the client, include those preferences in the planner context.
 
-### 2. Spawn Planner (Fresh Context)
+**Read phase-specific context if it exists:**
+```bash
+cat .planning/phase-{N}-context.md 2>/dev/null   # from /qualia-discuss
+cat .planning/phase-{N}-research.md 2>/dev/null  # from /qualia-research
+```
+
+### 2. Optional: Suggest Deeper Prep
+
+**If ROADMAP.md marked this phase as a "research flag" AND no phase-{N}-research.md exists:**
+
+- header: "Research first?"
+- question: "This phase was flagged for deeper research. Run /qualia-research {N} first?"
+- options:
+  - "Yes, research first" — Run /qualia-research {N} inline, then continue
+  - "Skip, plan directly" — I know enough
+
+**If phase involves compliance/regulatory/architectural stakes AND no phase-{N}-context.md exists:**
+
+Briefly suggest: *"Want to run /qualia-discuss {N} first to lock decisions? Optional."*
+
+Don't force it. Some phases don't need it.
+
+### 3. Spawn Planner (Fresh Context)
 
 ```bash
-node ~/.claude/bin/qualia-ui.js banner plan {N} "{phase name from STATE.md}"
+node ~/.claude/bin/qualia-ui.js banner plan {N} "{phase name from ROADMAP.md}"
 node ~/.claude/bin/qualia-ui.js spawn planner "Breaking phase into tasks..."
 ```
 
-Spawn a subagent with `agents/planner.md` instructions:
+Spawn the planner:
 
 ```
 Agent(prompt="
-Read your role: @agents/planner.md
+Read your role: @~/.claude/agents/qualia-planner.md
 
-Project context:
+<project_context>
 @.planning/PROJECT.md
+</project_context>
 
-Current state:
+<current_state>
 @.planning/STATE.md
+</current_state>
 
-Phase {N} goal: {goal from STATE.md roadmap}
-Phase {N} success criteria: {criteria from STATE.md}
+<phase_details>
+Phase {N} from ROADMAP.md:
+@.planning/ROADMAP.md
 
-{If --gaps: Also read @.planning/phase-{N}-verification.md for failures to fix}
+Goal: {goal from ROADMAP.md}
+Requirements: {REQ-IDs from ROADMAP.md}
+Success criteria: {success criteria from ROADMAP.md}
+</phase_details>
 
-Create the plan file at .planning/phase-{N}-plan.md
+<locked_decisions>
+{if phase-{N}-context.md exists, inline its Locked Decisions section; else 'none'}
+</locked_decisions>
+
+<research_findings>
+{if phase-{N}-research.md exists, inline its recommendation; else 'none'}
+</research_findings>
+
+{If --gaps: Also read @.planning/phase-{N}-verification.md for failures to fix. Create gap-closure plan.}
+
+<relevant_learnings>
+{inline any applicable patterns from knowledge/learned-patterns.md}
+</relevant_learnings>
+
+Create the plan at .planning/phase-{N}-plan.md (or .planning/phase-{N}-gaps-plan.md for --gaps).
 ", subagent_type="qualia-planner", description="Plan phase {N}")
 ```
 
-### 3. Review Plan
+### 4. Validate the Plan (unless --skip-check)
 
-Read the generated plan. Present the summary using the UI helpers:
+Read the generated plan. Spawn the plan-checker:
+
+```
+Agent(prompt="
+Read your role: @~/.claude/agents/qualia-plan-checker.md
+
+<plan_path>.planning/phase-{N}-plan.md</plan_path>
+<phase_goal>{goal from ROADMAP.md}</phase_goal>
+<success_criteria>{criteria from ROADMAP.md}</success_criteria>
+<project_context>@.planning/PROJECT.md</project_context>
+
+Validate against the 7 rules. Return PASS or REVISE with structured issues.
+", subagent_type="qualia-plan-checker", description="Check plan phase {N}")
+```
+
+**Revision loop (max 3 iterations):**
+
+- Iteration 1: Check → if REVISE, re-spawn planner with checker issues
+- Iteration 2: Re-check → if REVISE, re-spawn planner with new issues
+- Iteration 3: Final check → if REVISE or BLOCKED, escalate to user
+
+For each revision:
+
+```
+Agent(prompt="
+Read your role: @~/.claude/agents/qualia-planner.md
+
+<revision_mode>true</revision_mode>
+<current_plan>@.planning/phase-{N}-plan.md</current_plan>
+<checker_feedback>
+{inline REVISE output from plan-checker}
+</checker_feedback>
+
+Revise the plan in place. Address every issue. Do NOT add new tasks or change scope
+— only fix what the checker flagged.
+", subagent_type="qualia-planner", description="Revise plan phase {N}")
+```
+
+After revision, spawn the checker again. Max 3 total revision cycles.
+
+**If checker returns BLOCKED after 3 cycles:**
+
+```bash
+node ~/.claude/bin/qualia-ui.js fail "Plan failed validation after 3 revisions"
+```
+
+Show the remaining issues. Ask:
+- "Skip validation and proceed anyway" (use `--skip-check`)
+- "Adjust the roadmap" (phase scope may be wrong)
+- "Adjust the phase goal" (success criteria may be under-specified)
+
+### 5. Present Final Plan
 
 ```bash
 node ~/.claude/bin/qualia-ui.js divider
 node ~/.claude/bin/qualia-ui.js ok "Plan ready: {count} tasks across {count} waves"
 ```
 
-Then, for each wave, print:
-
+For each wave:
 ```bash
-node ~/.claude/bin/qualia-ui.js wave {wave_num} {wave_total} {task_count_in_wave}
+node ~/.claude/bin/qualia-ui.js wave {wave_num} {wave_total} {task_count}
 node ~/.claude/bin/qualia-ui.js task 1 "{task title}"
 node ~/.claude/bin/qualia-ui.js task 2 "{task title}"
 ```
 
-End with an approval prompt (plain text, no UI helper): *"Approve? (yes / adjust)"*
+End with plain text: *"Approve? (yes / adjust)"*
 
-If "adjust" — get feedback, re-spawn planner with revision context.
+If "adjust" — get feedback, re-spawn planner with revision context, re-validate.
 
-### 4. Update State
+### 6. Update State
 
 ```bash
 node ~/.claude/bin/state.js transition --to planned --phase {N}
 ```
-If state.js returns an error, show it to the employee and stop.
-Do NOT manually edit STATE.md or tracking.json — state.js handles both.
+
+If state.js returns an error, show it and stop. Do NOT manually edit STATE.md or tracking.json.
+
+### 7. Route
 
 ```bash
 node ~/.claude/bin/qualia-ui.js end "PHASE {N} PLANNED" "/qualia-build {N}"
 ```
 
-### Gap Closure Mode (`--gaps`)
+## Gap Closure Mode (`--gaps`)
 
 When invoked as `/qualia-plan {N} --gaps`, the planner is in gap-closure mode:
 
 1. Read `.planning/phase-{N}-verification.md` — extract ONLY the FAIL items
 2. For each FAIL item, create a targeted fix task:
-   - **Files:** The specific files that failed verification
-   - **Action:** The specific fix needed (not "fix auth" — "add session persistence check in `src/lib/auth.ts` signIn function")
-   - **Done when:** The exact verification criterion that previously failed, restated
+   - **Files:** specific files that failed verification
+   - **Action:** specific fix (not "fix auth" — "add session persistence check in src/lib/auth.ts signIn function")
+   - **Done when:** the exact verification criterion that previously failed, restated
 3. Do NOT re-plan passing items. Do NOT add new features. Gap plans are surgical.
 4. Write to `.planning/phase-{N}-gaps-plan.md` (separate from original plan)
 5. All gap tasks are Wave 1 (parallel) unless they share files
+6. Plan-checker still validates the gap plan — same 7 rules apply
+
+## Rules
+
+1. **Plan-checker is mandatory by default.** Only skip with `--skip-check`, and only if you know what you're doing.
+2. **Max 3 revision cycles.** After 3 failed checks, escalate — the phase scope is probably wrong.
+3. **Honor locked decisions.** If phase-{N}-context.md exists, its locked decisions are non-negotiable.
+4. **One plan file per phase.** Don't create phase-1-plan.md AND phase-1-plan-v2.md. Edit in place.
+5. **Revision is surgical.** When revising, only fix what the checker flagged — no scope creep.

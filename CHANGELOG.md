@@ -8,6 +8,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Note: git tags for historical versions were not retained; commit references are approximate
 > and dates reflect commit history rather than npm publish timestamps.
 
+## [3.3.0] — 2026-04-13
+
+Deep flow release. Adds the comprehensive v2.6-era capabilities (research, plan-check,
+requirements traceability, roadmap generation) back into the v3 architecture — ~2k
+lines total instead of the v2.6 55k bloat. Same command surface for end users. No
+migration needed — existing projects keep working.
+
+### Added
+
+- **`/qualia-new` comprehensive flow** — now runs deep questioning → 4 parallel
+  research agents → requirements with REQ-IDs → ROADMAP.md with phases → approval
+  gate. The 323-line wizard is replaced by a structured pipeline. Still ships with
+  `--quick` flag for trivial projects.
+- **`/qualia-plan` plan-checker loop** — planner output is now validated by a
+  plan-checker agent against 7 rules (task specificity, wave assignment, contract
+  coverage, etc.). Up to 3 revision cycles. `--skip-check` flag available for
+  emergencies.
+- **4 new skills:**
+  - `/qualia-discuss {N}` — capture locked decisions before planning a phase
+  - `/qualia-research {N}` — deep research for a niche phase (Context7/WebFetch/WebSearch)
+  - `/qualia-map` — brownfield codebase mapping (4 parallel scanners)
+  - `/qualia-milestone` — close current milestone, open next
+- **4 new agents:**
+  - `qualia-researcher` — single researcher agent invoked 4× in parallel with a
+    `<dimension>` arg (stack/features/architecture/pitfalls). No more 4 duplicate
+    agent files.
+  - `qualia-research-synthesizer` — merges 4 research outputs into SUMMARY.md
+  - `qualia-roadmapper` — produces REQUIREMENTS.md + ROADMAP.md from PROJECT.md
+    + research synthesis
+  - `qualia-plan-checker` — validates plans against 7 rules
+- **New templates** in `~/.claude/qualia-templates/`:
+  - `requirements.md` — REQ-ID traceability format
+  - `roadmap.md` — phase structure with REQ mapping
+  - `phase-context.md` — output shape for `/qualia-discuss`
+  - `research-project/STACK.md, FEATURES.md, ARCHITECTURE.md, PITFALLS.md, SUMMARY.md`
+  - `projects/website.md, ai-agent.md, voice-agent.md, mobile-app.md` — per-type
+    phase templates
+- **New references directory** `~/.claude/qualia-references/`:
+  - `questioning.md` — the methodology guide loaded by `/qualia-new` during the
+    questioning stage
+- **`install.js` recursive template copy** — templates/ now supports nested
+  directories (projects/, research-project/) via a new `copyTree` helper.
+- **`install.js` legacy cleanup** — automatically removes orphaned v2.6 install
+  cruft from `~/.claude/qualia-framework/` and any broken `~/.claude/agents/qualia-*.md`
+  files that reference the old `/home/qualia/` paths. Runs on upgrade.
+
+### Changed
+
+- **`/qualia-new` replaces the 323-line inline wizard** with a structured 14-step
+  process that delegates research/requirements/roadmap generation to specialized
+  agents. Still feels the same to the user — same banner, same question style,
+  same terminal output — but the backing logic is comprehensive instead of flat.
+- **`/qualia-plan` adds the plan-checker revision loop** by default. Existing
+  behavior (single planner call) is available via `--skip-check`.
+- **ROADMAP.md is now first-class.** v3.0 → v3.2.1 didn't create ROADMAP.md; this
+  release does. The ERP sync parser can now read structured roadmap data instead
+  of falling back to STATE.md table parsing.
+
+### Compatibility
+
+- **Existing v3.2.1 projects:** continue to work unchanged. The new features are
+  only triggered for newly-initialized projects.
+- **v3.2.1 skill flow:** same command names, same aesthetics, same statusline.
+- **Statusline:** unchanged (`state.js` still writes the same `phase`,
+  `total_phases`, `status` fields to `tracking.json`).
+
+### Philosophy
+
+The v2.6 framework was 55k lines because it duplicated bash boilerplate across
+30 workflow files and built mega-agents (43KB planner alone). This release ports
+the *concepts* (research, plan-check, requirements, roadmap) into the v3
+architecture (small focused agents, inline skills, single state tool). Total
+added: ~2k lines. Philosophy preserved: skills orchestrate, agents focus.
+
 ## [3.2.1] — 2026-04-12
 
 Patch release. Republishes the v3.2.0 feature set on top of the committed
