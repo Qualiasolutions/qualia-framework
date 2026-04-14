@@ -8,6 +8,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Note: git tags for historical versions were not retained; commit references are approximate
 > and dates reflect commit history rather than npm publish timestamps.
 
+## [3.4.0] — 2026-04-14
+
+ERP tracking was systematically wrong — milestone transitions destroyed all
+historical data, phase advances reset task counts, quick/task work was never
+counted. This release adds lifetime counters that survive every reset.
+
+### Added
+
+- **`lifetime` object in tracking.json** — `tasks_completed`, `phases_completed`,
+  `milestones_completed`, `total_phases`. These counters accumulate and NEVER
+  reset on init or phase advance. The ERP can now see the real total.
+- **`milestone` field in tracking.json** — current milestone number (1-indexed),
+  survives across `state.js init` calls.
+- **`state.js close-milestone` command** — snapshots the closing milestone's data
+  into lifetime before init resets current-phase fields.
+- **`--tasks-done N` on note/activity transitions** — `/qualia-quick` and
+  `/qualia-task` now increment `lifetime.tasks_completed` by 1 per invocation.
+- **`cmdCheck()` includes milestone + lifetime** in JSON output for ERP/statusline.
+- **tracking.json archived during milestone closeout** — previously only STATE.md
+  and ROADMAP.md were archived.
+- 12 new tests covering lifetime preservation, cross-phase accumulation,
+  close-milestone, backward compat. Suite is now 51 state tests, 129 total.
+
+### Fixed
+
+- **`state.js init` no longer destroys historical data.** It now reads the existing
+  tracking.json and preserves `milestone` and `lifetime` fields. Current-phase
+  fields still reset as expected.
+- **`verified(pass)` accumulates before resetting.** Task counts are added to
+  `lifetime.tasks_completed` and `lifetime.phases_completed` BEFORE `tasks_done`
+  resets to 0. The last phase of a milestone also counts (accumulation moved
+  outside the auto-advance conditional).
+- **`/qualia-report` endpoint fixed.** Was posting multipart to
+  `/api/claude/report-upload`; now sends structured JSON to `/api/v1/reports`
+  matching the ERP contract, including milestone + lifetime data.
+- Test 38 updated: `--force` bypasses `INVALID_PLAN` (matches v3.3.2 behavior).
+
+### Changed
+
+- `templates/tracking.json` includes `milestone` and `lifetime` fields.
+- `docs/erp-contract.md` documents the new fields in request/response schemas.
+- `skills/qualia-milestone/SKILL.md` calls `close-milestone` before `init`.
+
 ## [3.3.2] — 2026-04-13
 
 Patch release. `state.js transition --force` now bypasses `INVALID_PLAN`
