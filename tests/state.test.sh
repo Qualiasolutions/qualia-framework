@@ -895,6 +895,46 @@ else
   fail_case "first-time init lifetime" "got=$RESULT expected=1,0,0,0,0"
 fi
 
+# ─── Backfill lifetime ───────────────────────────────────
+echo ""
+echo "backfill-lifetime:"
+
+# 50. backfill-lifetime reconstructs from completed phases
+TMP=$(make_project)
+make_valid_plan "$TMP" 1
+touch "$TMP/.planning/phase-1-verification.md"
+(cd "$TMP" && $NODE "$STATE_JS" transition --to planned >/dev/null 2>&1)
+(cd "$TMP" && $NODE "$STATE_JS" transition --to built --tasks-done 3 --tasks-total 3 >/dev/null 2>&1)
+(cd "$TMP" && $NODE "$STATE_JS" transition --to verified --verification pass >/dev/null 2>&1)
+# Wipe lifetime to simulate pre-v3.4.0 state
+$NODE -e "
+  const t = JSON.parse(require('fs').readFileSync('$TMP/.planning/tracking.json','utf8'));
+  t.lifetime = { tasks_completed: 0, phases_completed: 0, milestones_completed: 0, total_phases: 0 };
+  require('fs').writeFileSync('$TMP/.planning/tracking.json', JSON.stringify(t, null, 2));
+"
+OUT=$(cd "$TMP" && $NODE "$STATE_JS" backfill-lifetime 2>&1)
+EXIT=$?
+if [ "$EXIT" -eq 0 ] \
+   && echo "$OUT" | grep -q '"action": "backfill-lifetime"' \
+   && echo "$OUT" | grep -q '"phases_completed": 1' \
+   && echo "$OUT" | grep -q '"tasks_completed": 1'; then
+  pass "backfill-lifetime reconstructs 1 phase, 1 task from plan file"
+else
+  fail_case "backfill-lifetime" "exit=$EXIT out=$OUT"
+fi
+
+# 51. backfill-lifetime is idempotent
+OUT2=$(cd "$TMP" && $NODE "$STATE_JS" backfill-lifetime 2>&1)
+RESULT=$($NODE -e "
+  const t = JSON.parse(require('fs').readFileSync('$TMP/.planning/tracking.json','utf8'));
+  console.log([t.lifetime.tasks_completed, t.lifetime.phases_completed].join(','));
+")
+if [ "$RESULT" = "1,1" ]; then
+  pass "backfill-lifetime is idempotent (same result on re-run)"
+else
+  fail_case "backfill idempotent" "got=$RESULT"
+fi
+
 # ─── Summary ─────────────────────────────────────────────
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="

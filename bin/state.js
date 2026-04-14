@@ -871,6 +871,82 @@ function cmdCloseMilestone(opts) {
   });
 }
 
+// ─── Backfill Lifetime ───────────────────────────────────
+// Reconstructs lifetime counters from STATE.md roadmap + plan files.
+// Safe to run multiple times (idempotent — recalculates from source).
+function cmdBackfillLifetime(opts) {
+  const t = readTracking();
+  const s = parseStateMd(readState());
+  if (!t || !s) {
+    return output(fail("NO_PROJECT", "No .planning/ found."));
+  }
+  ensureLifetime(t);
+
+  let phasesCompleted = 0;
+  let tasksCompleted = 0;
+
+  // Count completed phases from roadmap table
+  for (const p of s.phases) {
+    const st = (p.status || "").toLowerCase();
+    if (st === "verified" || st === "completed" || st === "complete") {
+      phasesCompleted++;
+
+      // Count tasks from that phase's plan file
+      const planFile = path.join(PLANNING, `phase-${p.num}-plan.md`);
+      const gapsPlanFile = path.join(PLANNING, `phase-${p.num}-gaps-plan.md`);
+      for (const f of [planFile, gapsPlanFile]) {
+        try {
+          if (fs.existsSync(f)) {
+            const content = fs.readFileSync(f, "utf8");
+            const taskHeaders = content.match(/^## Task \d+/gm);
+            if (taskHeaders) tasksCompleted += taskHeaders.length;
+          }
+        } catch {}
+      }
+    }
+  }
+
+  // Also count the current phase if it's past built (tasks exist but phase not yet verified)
+  const currentStatus = (t.status || "").toLowerCase();
+  if (currentStatus === "built" || currentStatus === "verified") {
+    // Current phase tasks are already in t.tasks_done — add if not already counted
+    const currentPhaseAlreadyCounted = s.phases.some(
+      (p) => p.num === t.phase && ["verified", "completed", "complete"].includes((p.status || "").toLowerCase())
+    );
+    if (!currentPhaseAlreadyCounted && t.tasks_done > 0) {
+      tasksCompleted += t.tasks_done;
+    }
+  }
+
+  const previous = { ...t.lifetime };
+
+  t.lifetime.phases_completed = phasesCompleted;
+  t.lifetime.tasks_completed = tasksCompleted;
+  // total_phases for current milestone (close-milestone handles cross-milestone)
+  if (t.lifetime.total_phases === 0 && t.lifetime.milestones_completed === 0) {
+    // First milestone, never closed — don't set total_phases here,
+    // it accumulates via close-milestone only
+  }
+  t.last_updated = new Date().toISOString();
+
+  writeTracking(t);
+
+  _trace("backfill-lifetime", "allow", {
+    previous,
+    computed: t.lifetime,
+  });
+
+  output({
+    ok: true,
+    action: "backfill-lifetime",
+    previous,
+    computed: t.lifetime,
+    phases_scanned: s.phases.length,
+    phases_completed: phasesCompleted,
+    tasks_completed: tasksCompleted,
+  });
+}
+
 // ─── Output ──────────────────────────────────────────────
 function output(obj) {
   console.log(JSON.stringify(obj, null, 2));
@@ -899,6 +975,9 @@ switch (cmd) {
     break;
   case "close-milestone":
     cmdCloseMilestone(opts);
+    break;
+  case "backfill-lifetime":
+    cmdBackfillLifetime(opts);
     break;
   default:
     output(

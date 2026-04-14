@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Note: git tags for historical versions were not retained; commit references are approximate
 > and dates reflect commit history rather than npm publish timestamps.
 
+## [3.4.1] — 2026-04-14
+
+### Added
+
+- **`state.js backfill-lifetime` command** — reconstructs lifetime counters from
+  STATE.md roadmap + plan files for existing projects upgrading from pre-v3.4.0.
+  Idempotent and safe to run multiple times. Use after updating to sync historical data.
+- 2 new tests for backfill (53 state tests, 129 total).
+
 ## [3.4.0] — 2026-04-14
 
 ERP tracking was systematically wrong — milestone transitions destroyed all
