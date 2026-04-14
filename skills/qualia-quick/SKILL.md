@@ -32,6 +32,6 @@ git commit -m "fix: {description}"
 No plan file. No subagents. Just build and ship.
 
 ```bash
-node ~/.claude/bin/state.js transition --to note --notes "{brief description of what was done}"
+node ~/.claude/bin/state.js transition --to note --notes "{brief description of what was done}" --tasks-done 1
 ```
 Do NOT manually edit STATE.md or tracking.json — state.js handles both.

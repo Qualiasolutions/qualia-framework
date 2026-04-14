@@ -61,6 +61,7 @@ Show:
 mkdir -p .planning/archive
 cp .planning/ROADMAP.md .planning/archive/{milestone_slug}-ROADMAP.md
 cp .planning/STATE.md .planning/archive/{milestone_slug}-STATE.md
+cp .planning/tracking.json .planning/archive/{milestone_slug}-tracking.json
 cp -r .planning/phases .planning/archive/{milestone_slug}-phases
 ```
 
@@ -101,7 +102,17 @@ Build phases for the new milestone scope. Do NOT plan for already-completed requ
 ", subagent_type="qualia-roadmapper", description="Create next milestone roadmap")
 ```
 
-### 8. Reset STATE.md via state.js
+### 8a. Close Milestone in State Machine
+
+Close the current milestone's tracking data before resetting. This preserves lifetime counters (total tasks, phases, milestones completed) across the reset.
+
+```bash
+node ~/.claude/bin/state.js close-milestone
+```
+
+### 8b. Reset STATE.md via state.js
+
+The `init` command resets current-phase fields but preserves `milestone` and `lifetime` data from the close-milestone step above.
 
 ```bash
 node ~/.claude/bin/state.js init \
@@ -129,7 +140,8 @@ node ~/.claude/bin/qualia-ui.js end "MILESTONE {closed} CLOSED" "/qualia-plan 1"
 
 **Stays:**
 - `.planning/PROJECT.md` — the project doesn't change
-- `.planning/archive/` — historical milestones preserved
+- `.planning/archive/` — historical milestones preserved (incl. tracking.json)
+- `tracking.json` lifetime fields — cumulative counters survive across milestones
 - Git history — every commit preserved
 
 **Changes:**

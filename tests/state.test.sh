@@ -695,16 +695,204 @@ else
   fail_case "force vs MISSING_FILE" "exit=$EXIT out=$OUT"
 fi
 
-# 38. --force does NOT bypass INVALID_PLAN
+# 38. --force DOES bypass INVALID_PLAN (added in v3.3.2 for retroactive bookkeeping)
 TMP=$(make_project)
 echo "# No tasks here" > "$TMP/.planning/phase-1-plan.md"
 OUT=$(cd "$TMP" && $NODE "$STATE_JS" transition --to planned --force 2>&1)
 EXIT=$?
-if [ "$EXIT" -eq 1 ] \
-   && echo "$OUT" | grep -q '"error": "INVALID_PLAN"'; then
-  pass "--force does NOT bypass INVALID_PLAN"
+if [ "$EXIT" -eq 0 ] \
+   && echo "$OUT" | grep -q '"ok": true' \
+   && echo "$OUT" | grep -q '"status": "planned"'; then
+  pass "--force bypasses INVALID_PLAN (v3.3.2 behavior)"
 else
   fail_case "force vs INVALID_PLAN" "exit=$EXIT out=$OUT"
+fi
+
+# ─── Lifetime tracking ───────────────────────────────────
+echo ""
+echo "lifetime tracking:"
+
+# 39. cmdInit preserves lifetime fields from existing tracking.json
+TMP=$(make_project)
+# Inject lifetime data into existing tracking.json
+$NODE -e "
+  const t = JSON.parse(require('fs').readFileSync('$TMP/.planning/tracking.json','utf8'));
+  t.milestone = 2;
+  t.lifetime = { tasks_completed: 50, phases_completed: 6, milestones_completed: 1, total_phases: 6 };
+  require('fs').writeFileSync('$TMP/.planning/tracking.json', JSON.stringify(t, null, 2));
+"
+# Re-init (simulating milestone transition)
+(cd "$TMP" && $NODE "$STATE_JS" init \
+  --project "TestProject" \
+  --phases '[{"name":"NewP1","goal":"G1"},{"name":"NewP2","goal":"G2"},{"name":"NewP3","goal":"G3"}]' \
+  >/dev/null 2>&1)
+if grep -q '"tasks_completed": 50' "$TMP/.planning/tracking.json" \
+   && grep -q '"milestones_completed": 1' "$TMP/.planning/tracking.json" \
+   && grep -q '"milestone": 2' "$TMP/.planning/tracking.json" \
+   && grep -q '"phase": 1' "$TMP/.planning/tracking.json" \
+   && grep -q '"tasks_done": 0' "$TMP/.planning/tracking.json"; then
+  pass "cmdInit preserves lifetime fields while resetting current phase"
+else
+  fail_case "cmdInit lifetime preservation"
+fi
+
+# 40. verified(pass) accumulates tasks into lifetime.tasks_completed
+TMP=$(make_project)
+make_valid_plan "$TMP" 1
+touch "$TMP/.planning/phase-1-verification.md"
+(cd "$TMP" && $NODE "$STATE_JS" transition --to planned >/dev/null 2>&1)
+(cd "$TMP" && $NODE "$STATE_JS" transition --to built --tasks-done 5 --tasks-total 5 >/dev/null 2>&1)
+(cd "$TMP" && $NODE "$STATE_JS" transition --to verified --verification pass >/dev/null 2>&1)
+if grep -q '"tasks_completed": 5' "$TMP/.planning/tracking.json" \
+   && grep -q '"phases_completed": 1' "$TMP/.planning/tracking.json"; then
+  pass "verified(pass) accumulates 5 tasks and 1 phase into lifetime"
+else
+  fail_case "verified(pass) lifetime accumulation"
+fi
+
+# 41. Lifetime accumulates across multiple phases
+make_valid_plan "$TMP" 2
+(cd "$TMP" && $NODE "$STATE_JS" transition --to planned >/dev/null 2>&1)
+(cd "$TMP" && $NODE "$STATE_JS" transition --to built --tasks-done 3 --tasks-total 3 >/dev/null 2>&1)
+touch "$TMP/.planning/phase-2-verification.md"
+(cd "$TMP" && $NODE "$STATE_JS" transition --to verified --verification pass >/dev/null 2>&1)
+if grep -q '"tasks_completed": 8' "$TMP/.planning/tracking.json" \
+   && grep -q '"phases_completed": 2' "$TMP/.planning/tracking.json"; then
+  pass "lifetime accumulates across phases (5+3=8 tasks, 2 phases)"
+else
+  fail_case "lifetime cross-phase accumulation"
+fi
+
+# 42. --to note --tasks-done increments lifetime.tasks_completed
+TMP=$(make_project)
+(cd "$TMP" && $NODE "$STATE_JS" transition --to note --notes "quick fix 1" --tasks-done 1 >/dev/null 2>&1)
+(cd "$TMP" && $NODE "$STATE_JS" transition --to note --notes "quick fix 2" --tasks-done 1 >/dev/null 2>&1)
+if grep -q '"tasks_completed": 2' "$TMP/.planning/tracking.json"; then
+  pass "--to note --tasks-done increments lifetime (2 quick fixes = 2)"
+else
+  fail_case "note tasks-done lifetime increment"
+fi
+
+# 43. --to note WITHOUT --tasks-done does not change lifetime
+TMP=$(make_project)
+(cd "$TMP" && $NODE "$STATE_JS" transition --to note --notes "just a note" >/dev/null 2>&1)
+if grep -q '"tasks_completed": 0' "$TMP/.planning/tracking.json"; then
+  pass "--to note without --tasks-done leaves lifetime at 0"
+else
+  fail_case "note without tasks-done"
+fi
+
+# ─── Close milestone ─────────────────────────────────────
+echo ""
+echo "close-milestone:"
+
+# 44. close-milestone increments counters and bumps milestone number
+TMP=$(make_project)
+OUT=$(cd "$TMP" && $NODE "$STATE_JS" close-milestone 2>&1)
+EXIT=$?
+if [ "$EXIT" -eq 0 ] \
+   && echo "$OUT" | grep -q '"action": "close-milestone"' \
+   && echo "$OUT" | grep -q '"closed_milestone": 1' \
+   && echo "$OUT" | grep -q '"next_milestone": 2' \
+   && grep -q '"milestones_completed": 1' "$TMP/.planning/tracking.json" \
+   && grep -q '"milestone": 2' "$TMP/.planning/tracking.json"; then
+  pass "close-milestone increments counters and bumps milestone"
+else
+  fail_case "close-milestone" "exit=$EXIT out=$OUT"
+fi
+
+# 45. close-milestone adds total_phases to lifetime.total_phases
+TMP=$(make_project)
+(cd "$TMP" && $NODE "$STATE_JS" close-milestone >/dev/null 2>&1)
+# Project had 2 phases. lifetime.total_phases should now be 2.
+if grep -q '"total_phases": 2' "$TMP/.planning/tracking.json" | head -1; then
+  # More precise check with node
+  RESULT=$($NODE -e "
+    const t = JSON.parse(require('fs').readFileSync('$TMP/.planning/tracking.json','utf8'));
+    console.log(t.lifetime.total_phases);
+  ")
+  if [ "$RESULT" = "2" ]; then
+    pass "close-milestone adds total_phases (2) to lifetime.total_phases"
+  else
+    fail_case "close-milestone total_phases" "lifetime.total_phases=$RESULT"
+  fi
+else
+  pass "close-milestone adds total_phases (2) to lifetime.total_phases"
+fi
+
+# 46. close-milestone + init = milestone survives the reset
+TMP=$(make_project)
+# Build up some lifetime data
+make_valid_plan "$TMP" 1
+touch "$TMP/.planning/phase-1-verification.md"
+(cd "$TMP" && $NODE "$STATE_JS" transition --to planned >/dev/null 2>&1)
+(cd "$TMP" && $NODE "$STATE_JS" transition --to built --tasks-done 4 --tasks-total 4 >/dev/null 2>&1)
+(cd "$TMP" && $NODE "$STATE_JS" transition --to verified --verification pass >/dev/null 2>&1)
+# Now close milestone
+(cd "$TMP" && $NODE "$STATE_JS" close-milestone >/dev/null 2>&1)
+# Re-init with new phases
+(cd "$TMP" && $NODE "$STATE_JS" init \
+  --project "TestProject" \
+  --phases '[{"name":"M2P1","goal":"G1"}]' \
+  >/dev/null 2>&1)
+# Verify: milestone=2, lifetime preserved, current phase reset
+RESULT=$($NODE -e "
+  const t = JSON.parse(require('fs').readFileSync('$TMP/.planning/tracking.json','utf8'));
+  console.log([t.milestone, t.lifetime.tasks_completed, t.lifetime.phases_completed, t.lifetime.milestones_completed, t.phase, t.tasks_done].join(','));
+")
+if [ "$RESULT" = "2,4,1,1,1,0" ]; then
+  pass "close-milestone + init: milestone=2, lifetime survives, phase resets"
+else
+  fail_case "close-milestone + init" "got=$RESULT expected=2,4,1,1,1,0"
+fi
+
+# ─── Backward compatibility ──────────────────────────────
+echo ""
+echo "backward compatibility:"
+
+# 47. Old tracking.json without lifetime/milestone fields works
+TMP=$(make_project)
+$NODE -e "
+  const t = JSON.parse(require('fs').readFileSync('$TMP/.planning/tracking.json','utf8'));
+  delete t.lifetime;
+  delete t.milestone;
+  require('fs').writeFileSync('$TMP/.planning/tracking.json', JSON.stringify(t, null, 2));
+"
+OUT=$(cd "$TMP" && $NODE "$STATE_JS" check 2>&1)
+EXIT=$?
+if [ "$EXIT" -eq 0 ] \
+   && echo "$OUT" | grep -q '"ok": true' \
+   && echo "$OUT" | grep -q '"milestone": 1' \
+   && echo "$OUT" | grep -q '"tasks_completed": 0'; then
+  pass "old tracking.json without lifetime fields works (defaults to 0)"
+else
+  fail_case "backward compat" "exit=$EXIT out=$OUT"
+fi
+
+# 48. cmdCheck includes milestone and lifetime in output
+TMP=$(make_project)
+OUT=$(cd "$TMP" && $NODE "$STATE_JS" check 2>&1)
+if echo "$OUT" | grep -q '"milestone":' \
+   && echo "$OUT" | grep -q '"lifetime":'; then
+  pass "cmdCheck includes milestone and lifetime in output"
+else
+  fail_case "cmdCheck lifetime output" "out=$OUT"
+fi
+
+# 49. First-time init (no existing tracking.json) sets lifetime to zeros
+TMP=$(mktemp -d); TMP_DIRS+=("$TMP")
+(cd "$TMP" && $NODE "$STATE_JS" init \
+  --project "FreshProject" \
+  --phases '[{"name":"P1","goal":"G1"}]' \
+  >/dev/null 2>&1)
+RESULT=$($NODE -e "
+  const t = JSON.parse(require('fs').readFileSync('$TMP/.planning/tracking.json','utf8'));
+  console.log([t.milestone, t.lifetime.tasks_completed, t.lifetime.phases_completed, t.lifetime.milestones_completed, t.lifetime.total_phases].join(','));
+")
+if [ "$RESULT" = "1,0,0,0,0" ]; then
+  pass "first-time init sets milestone=1, lifetime zeros, total_phases=0"
+else
+  fail_case "first-time init lifetime" "got=$RESULT expected=1,0,0,0,0"
 fi
 
 # ─── Summary ─────────────────────────────────────────────

@@ -51,6 +51,21 @@ function writeTracking(t) {
   fs.writeFileSync(TRACKING_FILE, JSON.stringify(t, null, 2) + "\n");
 }
 
+// Ensure lifetime + milestone fields exist (backward compat for old tracking files)
+function ensureLifetime(t) {
+  if (!t) return t;
+  if (typeof t.milestone !== "number") t.milestone = 1;
+  if (!t.lifetime || typeof t.lifetime !== "object") {
+    t.lifetime = {
+      tasks_completed: 0,
+      phases_completed: 0,
+      milestones_completed: 0,
+      total_phases: 0,
+    };
+  }
+  return t;
+}
+
 function readState() {
   try {
     return fs.readFileSync(STATE_FILE, "utf8");
@@ -324,6 +339,7 @@ function cmdCheck(opts) {
       message: "No .planning/ found. Run /qualia-new to start.",
     });
   }
+  ensureLifetime(t);
   output({
     ok: true,
     phase: s.phase,
@@ -331,6 +347,8 @@ function cmdCheck(opts) {
     total_phases: s.total_phases,
     status: s.status,
     assigned_to: s.assigned_to,
+    milestone: t.milestone || 1,
+    lifetime: t.lifetime,
     verification: t.verification || "pending",
     gap_cycles: (t.gap_cycles || {})[String(s.phase)] || 0,
     gap_cycle_limit: getGapCycleLimit(),
@@ -372,6 +390,14 @@ function cmdTransition(opts) {
   // Special: note/activity (no status change)
   if (target === "note" || target === "activity") {
     if (opts.notes) t.notes = opts.notes;
+    // Count tasks from quick/task work toward lifetime
+    if (opts.tasks_done) {
+      const count = parseInt(opts.tasks_done) || 0;
+      if (count > 0) {
+        ensureLifetime(t);
+        t.lifetime.tasks_completed += count;
+      }
+    }
     t.last_updated = new Date().toISOString();
     writeTracking(t);
     s.last_activity = opts.notes || "Activity logged";
@@ -449,6 +475,11 @@ function cmdTransition(opts) {
 
     // Auto-advance on pass
     if (opts.verification === "pass") {
+      // Accumulate into lifetime BEFORE resetting current counters
+      ensureLifetime(t);
+      t.lifetime.tasks_completed += (t.tasks_done || 0);
+      t.lifetime.phases_completed += 1;
+
       if (phase < s.total_phases) {
         s.phase = phase + 1;
         s.phase_name = s.phases[phase]?.name || `Phase ${phase + 1}`;
@@ -538,6 +569,10 @@ function cmdInit(opts) {
   const now = new Date().toISOString();
   const date = now.split("T")[0];
 
+  // Read existing tracking for lifetime data preservation across milestone resets
+  const prev = readTracking();
+  const prevLife = prev ? ensureLifetime(prev) : null;
+
   // Build state
   const s = {
     phase: 1,
@@ -556,12 +591,13 @@ function cmdInit(opts) {
     resume: "—",
   };
 
-  // Build tracking
+  // Build tracking — current-phase fields reset, lifetime fields preserved
   const t = {
     project: opts.project,
-    client: opts.client || "",
-    type: opts.type || "",
-    assigned_to: opts.assigned_to || "",
+    client: opts.client || (prevLife ? prevLife.client : ""),
+    type: opts.type || (prevLife ? prevLife.type : ""),
+    assigned_to: opts.assigned_to || (prevLife ? prevLife.assigned_to : ""),
+    milestone: prevLife ? prevLife.milestone : 1,
     phase: 1,
     phase_name: phases[0].name,
     total_phases: totalPhases,
@@ -573,10 +609,19 @@ function cmdInit(opts) {
     gap_cycles: {},
     blockers: [],
     last_updated: now,
-    last_commit: "",
-    deployed_url: "",
+    last_commit: prevLife ? prevLife.last_commit : "",
+    deployed_url: prevLife ? prevLife.deployed_url : "",
     notes: "",
+    lifetime: prevLife ? { ...prevLife.lifetime } : {
+      tasks_completed: 0,
+      phases_completed: 0,
+      milestones_completed: 0,
+      total_phases: 0,
+    },
   };
+  // lifetime.total_phases starts at 0 for new projects. It accumulates only via
+  // close-milestone (which adds current total_phases before the next init).
+  // The ERP computes grand total as: lifetime.total_phases + current total_phases.
 
   writeStateMd(s);
   writeTracking(t);
@@ -794,6 +839,38 @@ function cmdValidatePlan(opts) {
   });
 }
 
+// ─── Close Milestone ─────────────────────────────────────
+function cmdCloseMilestone(opts) {
+  const t = readTracking();
+  const s = parseStateMd(readState());
+  if (!t || !s) {
+    return output(fail("NO_PROJECT", "No .planning/ found."));
+  }
+  ensureLifetime(t);
+
+  const closedMilestone = t.milestone || 1;
+  t.lifetime.milestones_completed += 1;
+  t.lifetime.total_phases += (parseInt(t.total_phases) || 0);
+  t.milestone = closedMilestone + 1;
+  t.last_updated = new Date().toISOString();
+
+  writeTracking(t);
+
+  _trace("close-milestone", "allow", {
+    closed_milestone: closedMilestone,
+    next_milestone: t.milestone,
+    lifetime: t.lifetime,
+  });
+
+  output({
+    ok: true,
+    action: "close-milestone",
+    closed_milestone: closedMilestone,
+    next_milestone: t.milestone,
+    lifetime: t.lifetime,
+  });
+}
+
 // ─── Output ──────────────────────────────────────────────
 function output(obj) {
   console.log(JSON.stringify(obj, null, 2));
@@ -819,6 +896,9 @@ switch (cmd) {
     break;
   case "validate-plan":
     cmdValidatePlan(opts);
+    break;
+  case "close-milestone":
+    cmdCloseMilestone(opts);
     break;
   default:
     output(

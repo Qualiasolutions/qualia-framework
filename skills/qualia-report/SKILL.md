@@ -86,16 +86,47 @@ ERP_ENABLED=$(node -e "try{const c=JSON.parse(require('fs').readFileSync(require
 
 API_KEY=$(cat ~/.claude/.erp-api-key 2>/dev/null)
 REPORT_FILE=".planning/reports/report-{date}.md"
-EMAIL=$(git config user.email)
-PROJECT=$(basename $(pwd))
+SUBMITTED_BY=$(git config user.name)
+SUBMITTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # Only upload if ERP is enabled
 if [ "$ERP_ENABLED" = "true" ]; then
-  curl -s -X POST "$ERP_URL/api/claude/report-upload" \
-    -H "X-API-Key: $API_KEY" \
-    -F "file=@$REPORT_FILE" \
-    -F "employee_email=$EMAIL" \
-    -F "project_name=$PROJECT"
+  # Build structured JSON payload from tracking.json (matches ERP contract /api/v1/reports)
+  PAYLOAD=$(node -e "
+    const fs = require('fs');
+    const t = JSON.parse(fs.readFileSync('.planning/tracking.json', 'utf8'));
+    const notes = fs.readFileSync('$REPORT_FILE', 'utf8').substring(0, 60000);
+    const commits = [];
+    try {
+      const { spawnSync } = require('child_process');
+      const r = spawnSync('git', ['log', '--oneline', '--since=8 hours ago', '--format=%h'], { encoding: 'utf8', timeout: 3000 });
+      if (r.stdout) commits.push(...r.stdout.trim().split('\n').filter(Boolean));
+    } catch {}
+    console.log(JSON.stringify({
+      project: t.project || require('path').basename(process.cwd()),
+      client: t.client || '',
+      milestone: t.milestone || 1,
+      phase: t.phase,
+      phase_name: t.phase_name,
+      total_phases: t.total_phases,
+      status: t.status,
+      tasks_done: t.tasks_done || 0,
+      tasks_total: t.tasks_total || 0,
+      verification: t.verification || 'pending',
+      gap_cycles: (t.gap_cycles || {})[String(t.phase)] || 0,
+      deployed_url: t.deployed_url || '',
+      lifetime: t.lifetime || {},
+      commits: commits,
+      notes: notes,
+      submitted_by: '$SUBMITTED_BY',
+      submitted_at: '$SUBMITTED_AT'
+    }));
+  ")
+
+  curl -s -X POST "$ERP_URL/api/v1/reports" \
+    -H "Authorization: Bearer $API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD"
 fi
 ```
 

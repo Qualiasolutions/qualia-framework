@@ -86,6 +86,6 @@ node ~/.claude/bin/qualia-ui.js end "TASK COMPLETE"
 ```
 
 ```bash
-node ~/.claude/bin/state.js transition --to note --notes "{task description}"
+node ~/.claude/bin/state.js transition --to note --notes "{task description}" --tasks-done 1
 ```
 Do NOT manually edit STATE.md or tracking.json — state.js handles both.

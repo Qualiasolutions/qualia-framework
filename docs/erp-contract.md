@@ -35,6 +35,7 @@ Content-Type: application/json
 {
   "project": "client-project-name",
   "client": "Client Name",
+  "milestone": 2,
   "phase": 2,
   "phase_name": "Authentication & Dashboard",
   "total_phases": 4,
@@ -44,6 +45,12 @@ Content-Type: application/json
   "verification": "pass",
   "gap_cycles": 0,
   "deployed_url": "https://client.vercel.app",
+  "lifetime": {
+    "tasks_completed": 23,
+    "phases_completed": 8,
+    "milestones_completed": 1,
+    "total_phases": 8
+  },
   "session_duration_minutes": 45,
   "commits": ["abc1234", "def5678"],
   "notes": "Completed auth flow, dashboard layout, and API routes.",
@@ -119,10 +126,17 @@ Authorization: Bearer <api-key>
   "ok": true,
   "tracking": {
     "project": "client-project-name",
+    "milestone": 2,
     "phase": 2,
     "total_phases": 4,
     "status": "built",
-    "last_updated": "2026-04-12T14:30:00Z"
+    "last_updated": "2026-04-12T14:30:00Z",
+    "lifetime": {
+      "tasks_completed": 23,
+      "phases_completed": 8,
+      "milestones_completed": 1,
+      "total_phases": 8
+    }
   }
 }
 ```
@@ -134,6 +148,8 @@ Authorization: Bearer <api-key>
 - Network failures are non-blocking — the report is saved locally regardless.
 - The ERP reads `tracking.json` directly from git for real-time status (no API call needed for passive monitoring).
 - Reports are append-only — no update or delete endpoints exist.
+- `tracking.json` includes `milestone` and `lifetime` fields (added in v3.4). These survive across milestone resets and `state.js init` calls. For aggregate reporting, use `lifetime.total_phases` + current `total_phases` for the grand total across all milestones.
+- Backward compatibility: if `lifetime` is absent in tracking.json, treat all counters as 0 and `milestone` as 1.
 
 ## Required Fields
 
@@ -144,6 +160,8 @@ Authorization: Bearer <api-key>
 | status | string | yes | Current status (setup, planned, built, verified, etc.) |
 | submitted_by | string | yes | Team member name |
 | submitted_at | string | yes | ISO 8601 timestamp |
+| milestone | number | recommended | Current milestone number (1-indexed) |
+| lifetime | object | recommended | Cumulative counters — tasks_completed, phases_completed, milestones_completed, total_phases |
 
 All other fields are optional but recommended for complete reporting.
 

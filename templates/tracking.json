@@ -3,6 +3,7 @@
   "client": "",
   "type": "",
   "assigned_to": "",
+  "milestone": 1,
   "phase": 0,
   "phase_name": "",
   "total_phases": 0,
@@ -16,5 +17,11 @@
   "last_updated": "",
   "last_commit": "",
   "deployed_url": "",
-  "notes": ""
+  "notes": "",
+  "lifetime": {
+    "tasks_completed": 0,
+    "phases_completed": 0,
+    "milestones_completed": 0,
+    "total_phases": 0
+  }
 }
