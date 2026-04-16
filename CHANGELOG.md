@@ -8,6 +8,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Note: git tags for historical versions were not retained; commit references are approximate
 > and dates reflect commit history rather than npm publish timestamps.
 
+## [3.5.0] — 2026-04-17
+
+P1 hardening release. 9 hooks/scripts overhauled, false positives killed,
+false negatives caught, cross-platform robustness throughout. Companion to
+the v3.4.2 P0 hotfix shipped earlier today.
+
+### Fixed
+
+- **`branch-guard.js` refspec bypass.** Hook checked the *current* branch,
+  so EMPLOYEE could push `feature/x:main` from a feature branch and land on
+  main. Hook now parses `tool_input.command` from the Claude Code stdin
+  payload and rejects any refspec whose destination is `main` or `master`.
+  Block messages also routed to stderr (Claude Code surfaces stderr in
+  block reasons) and `shell: process.platform === "win32"` added to git
+  spawn for Windows reliability.
+- **`migration-guard.js` false positives.** SQL comments (`-- …` lines and
+  `/* … */` blocks) are now stripped before pattern matching, so
+  commented-out `DROP TABLE` calls no longer block. File-path regex
+  tightened from `migration|migrate|\.sql$` to
+  `(^|/)migrations?/` OR `\.sql$` — `MigrationModal.tsx` and `migrations.md`
+  no longer trigger scans. `CREATE TEMP TABLE` and partition tables exempt
+  from the RLS requirement.
+- **`migration-guard.js` false negatives.** New blockers: `ALTER TABLE …
+  DROP COLUMN`, `DROP DATABASE`, `DROP SCHEMA … CASCADE`, `UPDATE …` without
+  WHERE, `GRANT … TO PUBLIC`. Edit-tool calls now scan `old_string +
+  new_string + content` (was only new_string).
+- **`pre-deploy-gate.js` `service_role` scanner.** Tightened from literal
+  substring match to `\bservice_role` regex with per-line exemptions for
+  comments (`//`, `/*`, `*`), `process.env.SUPABASE_SERVICE_ROLE` reads,
+  and explicit `eslint-disable` allowlists. Walk now excludes `dist/`,
+  `out/`, `build/`, `coverage/`, `.next/`, `.vercel/`, `.turbo/` so
+  post-build artifacts don't slow the gate or false-positive on minified
+  output. Block messages routed to stderr.
+- **`auto-update.js` 24-hour blackout fixed.** Cache timestamp was written
+  *before* the npm version fetch — failed fetches suppressed re-checks for
+  24h. Now written only after successful fetch.
+- **`auto-update.js` no longer corrupts running sessions.** OWNER branch
+  used to spawn `npx qualia-framework@latest install` in the background,
+  which rewrote `~/.claude/settings.json` mid-session. Both OWNER and
+  EMPLOYEE now write the same notification file; user must explicitly run
+  `npx qualia-framework update` to actually upgrade.
+- **`pre-compact.js` silent commit failures.** Auto-commit ran with
+  `stdio: "ignore"` and could fail invisibly when user had pre-commit
+  hooks or commit signing → STATE.md not persisted before context
+  compaction → context loss. Commit now uses `--no-verify --no-gpg-sign
+  --author="Qualia Framework <bot@qualia.solutions>"` so it can't be
+  blocked by user hooks. Commit status traced for visibility.
+- **`statusline.js` 3-spawns-per-prompt.** Collapsed three separate `git`
+  invocations into a single `git status -b --porcelain=v1` call. Saves
+  ~300ms per cold prompt on Windows. Cache write is now atomic
+  (`tmp + rename`) so concurrent prompts can't produce corrupt cache.
+- **`state.js` CRLF tolerance.** Every `^Field:\s*(.+)$/m` regex is now
+  `(.+?)\r?$/m` so Windows editors saving STATE.md with CRLF don't leak
+  `\r` into captured `phase_name`, `status`, `assigned_to`.
+- **`cli.js cmdMigrate` no longer adds duplicate hooks.** Old check used
+  substring match against the absolute path; if home directory ever
+  changed, the OLD path didn't match the NEW path and `migrate` appended a
+  second entry. Now compares basenames, so `migrate` is idempotent
+  regardless of path changes.
+
+### Cleaned
+
+- **Skill agent path refs corrected.** `qualia-verify`, `qualia-build`
+  used `@agents/<name>.md` (relative to project cwd, broken from
+  `.planning/`). All skills now use `@~/.claude/agents/<name>.md`
+  consistently.
+- **`qualia-quick` description gained trigger phrases** so the smart
+  router actually fires it on natural-language requests.
+- **`qualia-map` skill uses `Agent(...)`** instead of legacy `Task(...)`,
+  matching framework convention everywhere else.
+- **`qualia-idk` skill removed.** Fully redundant — `qualia` (the router)
+  already lists "idk" as a trigger phrase.
+- **`templates/help.html` regenerated.** Now lists all 26 skills (was 17).
+  Grouped: Road, Phase Depth, Quality, Quick Paths, Knowledge, Session,
+  Navigation, Meta. Version pill bumped to v3.5.0.
+
+### Added
+
+- **GitHub Actions CI workflow.** `.github/workflows/test.yml` runs
+  `npm test` on Ubuntu + macOS + Windows × Node 18/20/22. Triggered on
+  every push and PR. 5-minute timeout per job. Tests are no longer
+  "local-only" — every commit is verified across the supported matrix.
+- 11 new tests covering refspec bypass (3), comment-stripped SQL,
+  ALTER TABLE DROP COLUMN, DROP DATABASE, UPDATE-without-WHERE, GRANT TO
+  PUBLIC, TEMP-table RLS exemption, MigrationModal.tsx bypass, CRLF
+  STATE.md parsing. Suite is now 148 tests, all green.
+
 ## [3.4.2] — 2026-04-17
 
 P0 hotfix release. Closes 7 critical bugs surfaced by a deep audit.

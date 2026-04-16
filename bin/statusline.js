@@ -93,35 +93,55 @@ try {
     let branch = "";
     let changes = 0;
     try {
-      const dirCheck = spawnSync("git", ["rev-parse", "--git-dir"], {
+      // Single git spawn: `status -b --porcelain=v1` returns branch on the
+      // first line (`## branch.name...`) and one change per subsequent line.
+      // Three separate git spawns cost ~450ms on Windows; this collapses to one.
+      const st = spawnSync("git", ["status", "-b", "--porcelain=v1"], {
         cwd: DIR,
         encoding: "utf8",
         timeout: 1000,
         stdio: ["ignore", "pipe", "ignore"],
+        shell: process.platform === "win32",
       });
-      if (dirCheck.status === 0) {
-        const br = spawnSync("git", ["branch", "--show-current"], {
-          cwd: DIR,
-          encoding: "utf8",
-          timeout: 1000,
-          stdio: ["ignore", "pipe", "ignore"],
-        });
-        if (br.status === 0) branch = (br.stdout || "").trim();
-
-        const st = spawnSync("git", ["status", "--porcelain"], {
-          cwd: DIR,
-          encoding: "utf8",
-          timeout: 1000,
-          stdio: ["ignore", "pipe", "ignore"],
-        });
-        if (st.status === 0) {
-          const out = (st.stdout || "").trim();
-          changes = out ? out.split("\n").length : 0;
+      if (st.status === 0) {
+        const lines = (st.stdout || "").split("\n");
+        const header = lines[0] || "";
+        if (header.startsWith("## ")) {
+          // Possible forms:
+          //   "## main"
+          //   "## main...origin/main"
+          //   "## main...origin/main [ahead 1, behind 2]"
+          //   "## HEAD (no branch)"  ← detached
+          //   "## No commits yet on main"
+          let raw = header.slice(3);
+          const ellipsisIdx = raw.indexOf("...");
+          if (ellipsisIdx !== -1) raw = raw.slice(0, ellipsisIdx);
+          // Strip any trailing "[ahead/behind]" annotation that survived
+          raw = raw.replace(/\s*\[.*\]\s*$/, "").trim();
+          if (raw === "HEAD (no branch)") {
+            branch = "HEAD";
+          } else if (raw.startsWith("No commits yet on ")) {
+            branch = raw.slice("No commits yet on ".length).trim();
+          } else {
+            branch = raw;
+          }
+        }
+        // Count change lines: every non-empty line after the header
+        for (let i = 1; i < lines.length; i++) {
+          if (lines[i].length > 0) changes++;
         }
       }
     } catch {}
     try {
-      fs.writeFileSync(cacheFile, `${branch}|${changes}`);
+      // Atomic write: tmp + rename so concurrent prompts can't observe
+      // a half-written cache file. Same pattern as state.js atomicWrite.
+      const tmp = `${cacheFile}.tmp.${process.pid}`;
+      fs.writeFileSync(tmp, `${branch}|${changes}`);
+      try {
+        fs.renameSync(tmp, cacheFile);
+      } catch {
+        try { fs.unlinkSync(tmp); } catch {}
+      }
     } catch {}
   }
 

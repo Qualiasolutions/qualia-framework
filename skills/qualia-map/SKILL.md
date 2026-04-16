@@ -47,28 +47,28 @@ Map 4 dimensions in parallel for speed. Each writes one file in `.planning/codeb
 
 ```
 Agent 1: Architecture scanner
-  Task(prompt="
+  Agent(prompt="
   Scan the current codebase and produce .planning/codebase/architecture.md.
   Identify: entry points, folder structure, module boundaries, data flow.
   Focus on WHAT the codebase does, not HOW to fix it.
   ", subagent_type="general-purpose", description="Architecture scan")
 
 Agent 2: Stack detector
-  Task(prompt="
+  Agent(prompt="
   Detect the tech stack. Read package.json, requirements.txt, Gemfile, etc.
   Produce .planning/codebase/stack.md listing: runtime, framework, key libraries,
   database, hosting, CI. Include version numbers.
   ", subagent_type="general-purpose", description="Stack detection")
 
 Agent 3: Conventions analyzer
-  Task(prompt="
+  Agent(prompt="
   Analyze code style and conventions. Sample 10-15 files across the codebase.
   Produce .planning/codebase/conventions.md listing: naming, component patterns,
   file organization, import style, test style, commit message format.
   ", subagent_type="general-purpose", description="Conventions analysis")
 
 Agent 4: Concerns scanner
-  Task(prompt="
+  Agent(prompt="
   Scan for code quality concerns — NOT to fix, just to document.
   Look for: TODO/FIXME, deprecated APIs, outdated dependencies, missing tests,
   security smells (hardcoded secrets, no input validation).

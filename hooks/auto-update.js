@@ -6,7 +6,7 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { spawn, spawnSync } = require("child_process");
+const { spawnSync } = require("child_process");
 
 const _traceStart = Date.now();
 
@@ -14,6 +14,7 @@ const CLAUDE_DIR = path.join(os.homedir(), ".claude");
 const CACHE_FILE = path.join(CLAUDE_DIR, ".qualia-last-update-check");
 const CONFIG_FILE = path.join(CLAUDE_DIR, ".qualia-config.json");
 const LOCK_FILE = path.join(CLAUDE_DIR, ".qualia-updating");
+const NOTIF_FILE = path.join(CLAUDE_DIR, ".qualia-update-available.json");
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 function _trace(hookName, result, extra) {
@@ -48,9 +49,6 @@ try {
     process.exit(0);
   }
 
-  // Update cache timestamp immediately to debounce concurrent checks
-  fs.writeFileSync(CACHE_FILE, String(Math.floor(Date.now() / 1000)));
-
   // Read current config
   let cfg = {};
   try {
@@ -64,76 +62,62 @@ try {
     process.exit(0);
   }
 
-  // Fork the check-and-update into a detached background process so the hook
-  // returns immediately and Claude Code is never blocked.
-  //
-  // OWNER: silent auto-install (unchanged behavior).
-  // EMPLOYEE: write a sticky notification file — session-start.js renders a
-  // banner every session until they run the update manually. Fawzi (OWNER)
-  // never sees the banner because his framework auto-updates ahead of it.
-  const script = `
-    const fs = require("fs");
-    const path = require("path");
-    const { spawnSync } = require("child_process");
-    const CLAUDE_DIR = ${JSON.stringify(CLAUDE_DIR)};
-    const LOCK_FILE = ${JSON.stringify(LOCK_FILE)};
-    const CONFIG_FILE = ${JSON.stringify(CONFIG_FILE)};
-    const NOTIF_FILE = path.join(CLAUDE_DIR, ".qualia-update-available.json");
-    const cfg = ${JSON.stringify(cfg)};
-    try {
-      fs.writeFileSync(LOCK_FILE, String(process.pid));
-      const r = spawnSync("npm", ["view", "qualia-framework", "version"], {
-        encoding: "utf8",
-        timeout: 15000,
-        shell: process.platform === "win32",
-      });
-      const latest = ((r.stdout || "").trim());
-      if (!latest) { try { fs.unlinkSync(LOCK_FILE); } catch {} process.exit(0); }
-      const cmp = (a, b) => {
-        const pa = a.split(".").map(Number), pb = b.split(".").map(Number);
-        for (let i = 0; i < 3; i++) {
-          if ((pa[i]||0) > (pb[i]||0)) return 1;
-          if ((pa[i]||0) < (pb[i]||0)) return -1;
-        }
-        return 0;
-      };
-      if (cmp(latest, cfg.version) > 0) {
-        if (cfg.role === "OWNER") {
-          // Silent auto-install for OWNER — no notification banner ever shown.
-          spawnSync("npx", ["qualia-framework@latest", "install"], {
-            input: cfg.code + "\\n",
-            timeout: 120000,
-            stdio: ["pipe", "ignore", "ignore"],
-            shell: process.platform === "win32",
-          });
-          try { fs.unlinkSync(NOTIF_FILE); } catch {}
-        } else {
-          // EMPLOYEE: write sticky notification. session-start.js will render
-          // a visible banner every session until the employee runs the update.
-          try {
-            fs.writeFileSync(NOTIF_FILE, JSON.stringify({
-              current: cfg.version,
-              latest: latest,
-              detected_at: new Date().toISOString(),
-            }, null, 2));
-          } catch {}
-        }
-      } else {
-        // Already up to date — clear any stale notification file.
-        try { fs.unlinkSync(NOTIF_FILE); } catch {}
-      }
-    } catch {}
-    try { fs.unlinkSync(LOCK_FILE); } catch {}
-  `;
+  // Synchronously fetch the latest version from npm. Tight timeout so the hook
+  // never blocks Claude Code for long. The cache timestamp is written ONLY if
+  // this fetch succeeds — otherwise the next session retries (no 24h blackout
+  // when the network is unreachable).
+  let latest = "";
+  try {
+    fs.writeFileSync(LOCK_FILE, String(process.pid));
+    const r = spawnSync("npm", ["view", "qualia-framework", "version"], {
+      encoding: "utf8",
+      timeout: 3000,
+      shell: process.platform === "win32",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    latest = ((r.stdout || "").trim());
+  } catch {}
+  try { fs.unlinkSync(LOCK_FILE); } catch {}
 
-  const child = spawn(process.execPath, ["-e", script], {
-    detached: true,
-    stdio: "ignore",
-  });
-  child.unref();
+  if (!latest) {
+    // Fetch failed — leave cache untouched so the next call retries.
+    _trace("auto-update", "allow", { reason: "npm-fetch-failed" });
+    process.exit(0);
+  }
+
+  // Successful fetch — debounce future checks for 24h.
+  fs.writeFileSync(CACHE_FILE, String(Math.floor(Date.now() / 1000)));
+
+  const cmp = (a, b) => {
+    const pa = a.split(".").map(Number), pb = b.split(".").map(Number);
+    for (let i = 0; i < 3; i++) {
+      if ((pa[i]||0) > (pb[i]||0)) return 1;
+      if ((pa[i]||0) < (pb[i]||0)) return -1;
+    }
+    return 0;
+  };
+
+  if (cmp(latest, cfg.version) > 0) {
+    // Update available — write a sticky notification file for ALL roles.
+    // session-start.js renders a banner every session until the user runs
+    // `npx qualia-framework update` manually. We do NOT auto-install during
+    // a live Claude Code session because install rewrites ~/.claude/settings.json
+    // and can corrupt the running session.
+    try {
+      fs.writeFileSync(NOTIF_FILE, JSON.stringify({
+        current: cfg.version,
+        latest: latest,
+        detected_at: new Date().toISOString(),
+      }, null, 2));
+    } catch {}
+    _trace("auto-update", "allow", { reason: "notification-written", current: cfg.version, latest });
+  } else {
+    // Already up to date — clear any stale notification file.
+    try { fs.unlinkSync(NOTIF_FILE); } catch {}
+    _trace("auto-update", "allow", { reason: "up-to-date", version: cfg.version });
+  }
 } catch {
   // Silent — never block the tool call
 }
 
-_trace("auto-update", "allow", { reason: "check-spawned" });
 process.exit(0);

@@ -31,7 +31,7 @@ node ~/.claude/bin/qualia-ui.js spawn verifier "Goal-backward check..."
 
 ```
 Agent(prompt="
-Read your role: @agents/verifier.md
+Read your role: @~/.claude/agents/verifier.md
 
 Phase plan with success criteria AND verification contracts:
 @.planning/phase-{N}-plan.md
@@ -56,7 +56,7 @@ If frontend:
 
 ```
 Agent(prompt="
-Read your role: @agents/qa-browser.md
+Read your role: @~/.claude/agents/qa-browser.md
 
 Phase plan: @.planning/phase-{N}-plan.md
 Existing verification: @.planning/phase-{N}-verification.md

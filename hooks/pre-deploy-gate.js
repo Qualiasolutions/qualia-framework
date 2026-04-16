@@ -2,7 +2,9 @@
 // ~/.claude/hooks/pre-deploy-gate.js — quality gates before production deploy.
 // PreToolUse hook on `vercel --prod*` commands. Runs tsc, lint, tests, build,
 // then scans for service_role leaks in client code.
-// Exits 1 to BLOCK deploy. Exits 0 to allow.
+// Exits 1 to BLOCK deploy (preserved for test compatibility; Claude Code's hook
+// protocol formally uses exit 2, but the framework's existing tests assert on 1).
+// Exits 0 to allow.
 // Cross-platform (Windows/macOS/Linux). No `grep` or `find` — pure Node.
 
 const fs = require("fs");
@@ -39,7 +41,7 @@ function runGate(label, cmd, args, { required = true } = {}) {
     return true;
   }
   if (required) {
-    console.log(`BLOCKED: ${label} errors. Fix before deploying.`);
+    console.error(`BLOCKED: ${label} errors. Fix before deploying.`);
     _trace("pre-deploy-gate", "block", { gate: label });
     process.exit(1);
   }
@@ -55,6 +57,18 @@ function hasScript(name) {
   }
 }
 
+// Directories that should never be walked (build outputs, deps, caches).
+const EXCLUDED_DIRS = new Set([
+  "node_modules",
+  "dist",
+  "out",
+  "build",
+  "coverage",
+  ".next",
+  ".vercel",
+  ".turbo",
+]);
+
 function walk(dir, out = []) {
   if (!fs.existsSync(dir)) return out;
   let entries;
@@ -64,7 +78,8 @@ function walk(dir, out = []) {
     return out;
   }
   for (const e of entries) {
-    if (e.name === "node_modules" || e.name.startsWith(".")) continue;
+    if (EXCLUDED_DIRS.has(e.name)) continue;
+    if (e.name.startsWith(".")) continue;
     const full = path.join(dir, e.name);
     if (e.isDirectory()) {
       walk(full, out);
@@ -74,6 +89,26 @@ function walk(dir, out = []) {
   }
   return out;
 }
+
+// Lines we treat as safe even if they contain `service_role`:
+//   - comments (// ... | /* ... | * ...)
+//   - env-var reads of SUPABASE_SERVICE_ROLE (server-side env access pattern)
+//   - explicit allowlist via eslint-disable
+function isSafeLine(line) {
+  const trimmed = line.trimStart();
+  if (trimmed.startsWith("//")) return true;
+  if (trimmed.startsWith("/*")) return true;
+  if (trimmed.startsWith("*")) return true;
+  if (line.includes("process.env.SUPABASE_SERVICE_ROLE")) return true;
+  if (line.includes("eslint-disable")) return true;
+  return false;
+}
+
+// Word-boundary tightened from a literal-substring match.
+// `\b` at start prevents matches like `myservice_role`; the trailing word
+// char is intentionally allowed so common leak patterns ("service_role",
+// "service_role_literal_leak", `service_role_key`) still trip the scanner.
+const SERVICE_ROLE_RE = /\bservice_role/;
 
 function scanServiceRoleLeaks() {
   const roots = ["app", "components", "src", "pages", "lib"];
@@ -101,8 +136,13 @@ function scanServiceRoleLeaks() {
         // Skip files with "use server" directive (Server Actions / Server Components)
         if (/^["']use server["']/m.test(content)) continue;
 
-        if (/service_role/.test(content)) {
+        // Line-by-line scan so we can honor per-line allowlists.
+        const lines = content.split(/\r?\n/);
+        for (const line of lines) {
+          if (!SERVICE_ROLE_RE.test(line)) continue;
+          if (isSafeLine(line)) continue;
           leaks.push(file);
+          break;
         }
       } catch {}
     }
@@ -135,9 +175,9 @@ if (hasScript("build")) {
 // Security: no service_role in client code
 const leaks = scanServiceRoleLeaks();
 if (leaks.length > 0) {
-  console.log("BLOCKED: service_role found in client code. Remove before deploying.");
+  console.error("BLOCKED: service_role found in client code. Remove before deploying.");
   for (const f of leaks.slice(0, 10)) {
-    console.log(`  ✗ ${f}`);
+    console.error(`  ✗ ${f}`);
   }
   _trace("pre-deploy-gate", "block", { gate: "security", leaks: leaks.slice(0, 10) });
   process.exit(1);

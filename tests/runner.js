@@ -952,6 +952,25 @@ waves: 1
     }
   });
 
+  // ─── v3.5.0: CRLF tolerance in parseStateMd ────────────
+  it("parseStateMd tolerates CRLF line endings (Windows-edited STATE.md)", () => {
+    const tmpDir = makeProject();
+    try {
+      const stateFile = path.join(tmpDir, ".planning", "STATE.md");
+      const lf = fs.readFileSync(stateFile, "utf8");
+      // Simulate Windows editor save: convert all \n to \r\n
+      const crlf = lf.replace(/\n/g, "\r\n");
+      fs.writeFileSync(stateFile, crlf);
+      const r = runState(["check"], tmpDir);
+      assert.equal(r.status, 0, `check failed on CRLF STATE.md: ${r.stdout} ${r.stderr}`);
+      const out = JSON.parse(r.stdout);
+      assert.equal(out.phase_name, "Foundation", "phase_name must NOT contain trailing \\r");
+      assert.equal(out.status, "setup", "status must NOT contain trailing \\r");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   // ─── v3.4.2: lock file is released after mutation ──────
   it("transition releases the .state.lock", () => {
     const tmpDir = makeProject();
@@ -1499,6 +1518,135 @@ describe("Hooks", () => {
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
+  });
+
+  // v3.5.0: refspec bypass — EMPLOYEE on a feature branch trying to push
+  // `feature/x:main` MUST be blocked, even though current branch isn't main.
+  it("branch-guard: EMPLOYEE refspec push to main -> blocked", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "qualia-bg-"));
+    try {
+      const projDir = path.join(tmpDir, "proj");
+      fs.mkdirSync(projDir, { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
+      spawnSync("git", ["init", "-q"], { cwd: projDir });
+      spawnSync("git", ["checkout", "-b", "feature/x", "-q"], { cwd: projDir, stdio: "pipe" });
+      fs.writeFileSync(path.join(tmpDir, ".claude", ".qualia-config.json"), JSON.stringify({ role: "EMPLOYEE" }));
+      // Send Claude Code hook payload via stdin
+      const payload = JSON.stringify({
+        tool_input: { command: "git push origin feature/x:main" },
+      });
+      const r = spawnSync(process.execPath, [path.join(HOOKS, "branch-guard.js")], {
+        encoding: "utf8", cwd: projDir, timeout: 5000,
+        env: { ...process.env, HOME: tmpDir, USERPROFILE: tmpDir },
+        input: payload,
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+      assert.equal(r.status, 2, "refspec push to main must be blocked for EMPLOYEE");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("branch-guard: EMPLOYEE refspec push to master -> blocked", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "qualia-bg-"));
+    try {
+      const projDir = path.join(tmpDir, "proj");
+      fs.mkdirSync(projDir, { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
+      spawnSync("git", ["init", "-q"], { cwd: projDir });
+      spawnSync("git", ["checkout", "-b", "feature/x", "-q"], { cwd: projDir, stdio: "pipe" });
+      fs.writeFileSync(path.join(tmpDir, ".claude", ".qualia-config.json"), JSON.stringify({ role: "EMPLOYEE" }));
+      const payload = JSON.stringify({
+        tool_input: { command: "git push origin HEAD:master" },
+      });
+      const r = spawnSync(process.execPath, [path.join(HOOKS, "branch-guard.js")], {
+        encoding: "utf8", cwd: projDir, timeout: 5000,
+        env: { ...process.env, HOME: tmpDir, USERPROFILE: tmpDir },
+        input: payload,
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+      assert.equal(r.status, 2, "refspec push to master must be blocked for EMPLOYEE");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("branch-guard: OWNER refspec push to main -> allowed", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "qualia-bg-"));
+    try {
+      const projDir = path.join(tmpDir, "proj");
+      fs.mkdirSync(projDir, { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
+      spawnSync("git", ["init", "-q"], { cwd: projDir });
+      spawnSync("git", ["checkout", "-b", "feature/x", "-q"], { cwd: projDir, stdio: "pipe" });
+      fs.writeFileSync(path.join(tmpDir, ".claude", ".qualia-config.json"), JSON.stringify({ role: "OWNER" }));
+      const payload = JSON.stringify({
+        tool_input: { command: "git push origin feature/x:main" },
+      });
+      const r = spawnSync(process.execPath, [path.join(HOOKS, "branch-guard.js")], {
+        encoding: "utf8", cwd: projDir, timeout: 5000,
+        env: { ...process.env, HOME: tmpDir, USERPROFILE: tmpDir },
+        input: payload,
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+      assert.equal(r.status, 0, "OWNER may push to main via refspec");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  // v3.5.0: migration-guard — comments stripped before pattern match
+  it("migration-guard: commented-out DROP TABLE is NOT blocked", () => {
+    const r = runHook("migration-guard.js", {
+      tool_input: {
+        file_path: "supabase/migrations/001_init.sql",
+        content: "-- DROP TABLE old_users; (rolled back, kept for reference)\nCREATE TABLE foo (id uuid) WITH (security_invoker = true);\nALTER TABLE foo ENABLE ROW LEVEL SECURITY;",
+      },
+    });
+    assert.equal(r.status, 0, `commented DROP should not block: ${r.stdout || r.stderr}`);
+  });
+
+  // v3.5.0: migration-guard — new destructive patterns
+  it("migration-guard: ALTER TABLE DROP COLUMN -> blocked", () => {
+    const r = runHook("migration-guard.js", {
+      tool_input: { file_path: "supabase/migrations/002.sql", content: "ALTER TABLE users DROP COLUMN ssn;" },
+    });
+    assert.equal(r.status, 2, "ALTER TABLE DROP COLUMN must block");
+  });
+
+  it("migration-guard: DROP DATABASE -> blocked", () => {
+    const r = runHook("migration-guard.js", {
+      tool_input: { file_path: "supabase/migrations/003.sql", content: "DROP DATABASE production;" },
+    });
+    assert.equal(r.status, 2, "DROP DATABASE must block");
+  });
+
+  it("migration-guard: UPDATE without WHERE -> blocked", () => {
+    const r = runHook("migration-guard.js", {
+      tool_input: { file_path: "supabase/migrations/004.sql", content: "UPDATE users SET email = NULL;" },
+    });
+    assert.equal(r.status, 2, "UPDATE without WHERE must block");
+  });
+
+  it("migration-guard: GRANT TO PUBLIC -> blocked", () => {
+    const r = runHook("migration-guard.js", {
+      tool_input: { file_path: "supabase/migrations/005.sql", content: "GRANT ALL ON users TO PUBLIC;" },
+    });
+    assert.equal(r.status, 2, "GRANT TO PUBLIC must block");
+  });
+
+  it("migration-guard: CREATE TEMP TABLE without RLS -> NOT blocked", () => {
+    const r = runHook("migration-guard.js", {
+      tool_input: { file_path: "supabase/migrations/006.sql", content: "CREATE TEMP TABLE scratch (id int);" },
+    });
+    assert.equal(r.status, 0, "TEMP tables should be exempt from the RLS requirement");
+  });
+
+  it("migration-guard: MigrationModal.tsx is NOT scanned", () => {
+    const r = runHook("migration-guard.js", {
+      tool_input: { file_path: "src/components/MigrationModal.tsx", content: "DROP TABLE users;" },
+    });
+    assert.equal(r.status, 0, "files with 'migration' in the name but not in a migrations/ dir should not be scanned");
   });
 });
 

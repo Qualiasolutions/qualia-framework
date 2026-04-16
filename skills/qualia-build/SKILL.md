@@ -61,7 +61,7 @@ Spawn a fresh builder subagent:
 
 ```
 Agent(prompt="
-Read your role: @agents/builder.md
+Read your role: @~/.claude/agents/builder.md
 
 Project context:
 @.planning/PROJECT.md

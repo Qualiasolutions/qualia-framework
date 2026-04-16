@@ -564,9 +564,19 @@ function cmdMigrate() {
   }
   if (!bashEntry.hooks) bashEntry.hooks = [];
 
+  // Compare by basename, not by absolute-path substring. If the user moved
+  // ~ between OS reinstalls, the OLD path embedded in settings.json no
+  // longer matches the NEW path and migrate would otherwise append a
+  // duplicate entry on every re-run.
+  const extractScriptName = (command) => {
+    const match = command && command.match(/["']([^"']+\.js)["']/);
+    return match ? path.basename(match[1]) : null;
+  };
+
   for (const hookFile of requiredBashHooks) {
     const cmd = nodeCmd(hookFile);
-    const exists = bashEntry.hooks.some(h => h.command && h.command.includes(hookFile));
+    const targetName = path.basename(hookFile);
+    const exists = bashEntry.hooks.some(h => extractScriptName(h.command) === targetName);
     if (!exists) {
       const hookDef = { type: "command", command: cmd, timeout: hookFile === "pre-deploy-gate.js" ? 180 : 5 };
       if (hookFile === "branch-guard.js") hookDef.if = "Bash(git push*)";
@@ -588,7 +598,8 @@ function cmdMigrate() {
 
   for (const hookFile of requiredEditHooks) {
     const cmd = nodeCmd(hookFile);
-    const exists = editEntry.hooks.some(h => h.command && h.command.includes(hookFile));
+    const targetName = path.basename(hookFile);
+    const exists = editEntry.hooks.some(h => extractScriptName(h.command) === targetName);
     if (!exists) {
       const hookDef = { type: "command", command: cmd, timeout: hookFile === "migration-guard.js" ? 10 : 5 };
       if (hookFile === "migration-guard.js") hookDef.if = "Edit(*migration*)|Write(*migration*)|Edit(*.sql)|Write(*.sql)";

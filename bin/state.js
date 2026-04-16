@@ -142,14 +142,17 @@ function parseStateMd(content) {
   if (!content) return null;
   const schema_errors = [];
   const get = (prefix) => {
-    const m = content.match(new RegExp(`^${prefix}:\\s*(.+)$`, "m"));
+    // CRLF tolerance: Windows editors save with `\r\n`. Use `(.+?)\r?$` so
+    // the `\r` is consumed, not captured. `.trim()` is still applied as
+    // belt-and-suspenders for any other trailing whitespace.
+    const m = content.match(new RegExp(`^${prefix}:\\s*(.+?)\\r?$`, "m"));
     return m ? m[1].trim() : "";
   };
   const hasField = (prefix) =>
     new RegExp(`^${prefix}:\\s*`, "m").test(content);
 
   const phaseMatch = content.match(
-    /^Phase:\s*(\d+)\s+of\s+(\d+)\s*[—-]\s*(.+)$/m
+    /^Phase:\s*(\d+)\s+of\s+(\d+)\s*[—-]\s*(.+?)\r?$/m
   );
   if (!phaseMatch) {
     schema_errors.push({
