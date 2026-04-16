@@ -952,6 +952,56 @@ waves: 1
     }
   });
 
+  // ─── v3.6.0: tracking.json schema additions ────────────
+  it("init writes new schema fields (team_id, project_id, build_count, etc.)", () => {
+    const tmpDir = makeProject();
+    try {
+      const t = JSON.parse(fs.readFileSync(path.join(tmpDir, ".planning", "tracking.json"), "utf8"));
+      // New v3.6 fields (default to empty / 0, but must be present)
+      assert.ok("team_id" in t, "team_id missing");
+      assert.ok("project_id" in t, "project_id missing");
+      assert.ok("git_remote" in t, "git_remote missing");
+      assert.ok("session_started_at" in t, "session_started_at missing");
+      assert.ok("last_pushed_at" in t, "last_pushed_at missing");
+      assert.ok("build_count" in t, "build_count missing");
+      assert.ok("deploy_count" in t, "deploy_count missing");
+      assert.ok("submitted_by" in t, "submitted_by missing");
+      assert.ok("last_closed_milestone" in t.lifetime, "lifetime.last_closed_milestone missing");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("init --force defensively hydrates partial lifetime (no NaN)", () => {
+    const tmpDir = makeProject();
+    try {
+      // Write a partial lifetime that's missing keys
+      const tFile = path.join(tmpDir, ".planning", "tracking.json");
+      const t = JSON.parse(fs.readFileSync(tFile, "utf8"));
+      t.lifetime = { tasks_completed: 5 }; // partial — missing other keys
+      fs.writeFileSync(tFile, JSON.stringify(t, null, 2) + "\n");
+
+      const r = spawnSync(process.execPath, [
+        path.join(BIN, "state.js"), "init",
+        "--project", "TestProject",
+        "--phases", '[{"name":"X","goal":"Y"}]',
+        "--force",
+      ], { encoding: "utf8", cwd: tmpDir, timeout: 5000, stdio: ["pipe", "pipe", "pipe"] });
+      assert.equal(r.status, 0);
+      const tAfter = JSON.parse(fs.readFileSync(tFile, "utf8"));
+      // Original partial value preserved
+      assert.equal(tAfter.lifetime.tasks_completed, 5);
+      // Missing keys defaulted to 0, never NaN
+      assert.equal(tAfter.lifetime.phases_completed, 0);
+      assert.equal(tAfter.lifetime.milestones_completed, 0);
+      assert.equal(tAfter.lifetime.total_phases, 0);
+      assert.equal(tAfter.lifetime.last_closed_milestone, 0);
+      assert.ok(!Number.isNaN(tAfter.lifetime.phases_completed));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   // ─── v3.5.0: CRLF tolerance in parseStateMd ────────────
   it("parseStateMd tolerates CRLF line endings (Windows-edited STATE.md)", () => {
     const tmpDir = makeProject();

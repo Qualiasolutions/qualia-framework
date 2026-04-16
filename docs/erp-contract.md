@@ -34,6 +34,9 @@ Content-Type: application/json
 ```json
 {
   "project": "client-project-name",
+  "project_id": "qs-acme-portal",
+  "team_id": "qualia-solutions",
+  "git_remote": "github.com/QualiasolutionsCY/acme-portal",
   "client": "Client Name",
   "milestone": 2,
   "phase": 2,
@@ -44,20 +47,31 @@ Content-Type: application/json
   "tasks_total": 5,
   "verification": "pass",
   "gap_cycles": 0,
+  "build_count": 12,
+  "deploy_count": 3,
   "deployed_url": "https://client.vercel.app",
   "lifetime": {
     "tasks_completed": 23,
     "phases_completed": 8,
     "milestones_completed": 1,
-    "total_phases": 8
+    "total_phases": 8,
+    "last_closed_milestone": 1
   },
+  "session_started_at": "2026-04-12T13:45:00Z",
   "session_duration_minutes": 45,
+  "last_pushed_at": "2026-04-12T14:25:00Z",
   "commits": ["abc1234", "def5678"],
   "notes": "Completed auth flow, dashboard layout, and API routes.",
   "submitted_by": "Fawzi Goussous",
   "submitted_at": "2026-04-12T14:30:00Z"
 }
 ```
+
+**`gap_cycles` polymorphism (v3.5+):** in `tracking.json` (the file the ERP
+reads from git for passive monitoring) `gap_cycles` is an OBJECT keyed by
+phase number — `{"1": 0, "2": 1}`. In the POST `/api/v1/reports` body,
+`/qualia-report` flattens to a NUMBER for the current phase. Receivers must
+accept both shapes: if object, use `gap_cycles[String(phase)] || 0`.
 
 **Response (200 OK):**
 ```json
@@ -161,7 +175,14 @@ Authorization: Bearer <api-key>
 | submitted_by | string | yes | Team member name |
 | submitted_at | string | yes | ISO 8601 timestamp |
 | milestone | number | recommended | Current milestone number (1-indexed) |
-| lifetime | object | recommended | Cumulative counters — tasks_completed, phases_completed, milestones_completed, total_phases |
+| lifetime | object | recommended | Cumulative counters — tasks_completed, phases_completed, milestones_completed, total_phases, last_closed_milestone |
+| project_id | string | recommended (v3.6+) | Stable per-project identifier — preferred dedupe key over `project` slug. Survives directory renames. |
+| team_id | string | recommended (v3.6+) | Installation's team identifier. Composite `(team_id, project_id)` is the canonical project key. |
+| git_remote | string | optional (v3.6+) | e.g. `github.com/QualiasolutionsCY/foo`. Lets the ERP correlate tracking with the source repo. |
+| session_started_at | string | optional (v3.6+) | ISO 8601 — when the current Claude Code session began. |
+| last_pushed_at | string | optional (v3.6+) | ISO 8601 — distinct from `last_updated` (which fires on local writes too). |
+| build_count | number | optional (v3.6+) | Lifetime build counter. |
+| deploy_count | number | optional (v3.6+) | Lifetime deploy counter. |
 
 All other fields are optional but recommended for complete reporting.
 

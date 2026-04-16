@@ -8,6 +8,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Note: git tags for historical versions were not retained; commit references are approximate
 > and dates reflect commit history rather than npm publish timestamps.
 
+## [3.6.0] — 2026-04-17
+
+P2 cleanup release. Schema reconciliation with the ERP, log retention,
+and remaining state-machine polish from the audit. Third release of the
+night, after v3.4.2 (P0 hotfix) and v3.5.0 (P1 hardening).
+
+### Added
+
+- **`tracking.json` schema additions** — new fields:
+  - `team_id`, `project_id` — stable identifiers for ERP dedupe
+    (composite `(team_id, project_id)` is the canonical project key,
+    surviving directory renames)
+  - `git_remote` — lets the ERP correlate tracking with the source repo
+  - `session_started_at`, `last_pushed_at` — distinct timestamps
+  - `build_count`, `deploy_count` — lifetime counters
+  - `submitted_by` — mirrored at the top level (was only in /qualia-report
+    payloads)
+  - `lifetime.last_closed_milestone` — sentinel for close-milestone
+    idempotency (introduced in v3.4.2)
+- **Log retention.** Trace files in `~/.claude/.qualia-traces/` older than
+  30 days are pruned on ~1% of writes. Heavy users no longer accumulate
+  unbounded MB/day.
+- 2 new tests covering schema additions and defensive lifetime hydrate.
+  Suite is now 150 tests, all green.
+
+### Fixed
+
+- **`polished` transition no longer mis-marks the roadmap.** Was setting
+  the LAST roadmap row to status `verified` regardless of which phase the
+  user polished. Now marks every passed phase as `polished`.
+- **`cmdInit` defensively hydrates partial lifetime objects.** If
+  `prevLife.lifetime` was missing keys (older tracking.json format), the
+  spread left `undefined`s that subsequent `+=` produced `NaN`. Defaults
+  layer underneath the spread so missing keys are 0, not NaN.
+
+### Changed
+
+- **`docs/erp-contract.md`** documents `gap_cycles` polymorphism (object
+  in tracking.json, number in `/api/v1/reports` payload — receivers must
+  accept both shapes) and adds the new v3.6+ fields to the request body
+  example and required-fields table.
+
 ## [3.5.0] — 2026-04-17
 
 P1 hardening release. 9 hooks/scripts overhauled, false positives killed,

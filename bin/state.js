@@ -68,10 +68,32 @@ function releaseLock(lock) {
 // Signature normalized: _trace(event, result, data?). Old callers passed
 // (event, data) with `result` as a string in `data` — that produced
 // nonsense JSONL ({0:"a",1:"l",2:"l",...}). Always use the 3-arg form.
+//
+// Log rotation: trace files older than TRACE_RETENTION_DAYS are pruned
+// on every write. Heavy users used to accumulate unbounded MB/day in
+// ~/.claude/.qualia-traces/. The prune is best-effort and never throws.
+const TRACE_RETENTION_DAYS = 30;
+
+function _pruneTraces(traceDir) {
+  try {
+    const cutoff = Date.now() - TRACE_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+    for (const name of fs.readdirSync(traceDir)) {
+      if (!name.endsWith(".jsonl")) continue;
+      const p = path.join(traceDir, name);
+      try {
+        const stat = fs.statSync(p);
+        if (stat.mtimeMs < cutoff) fs.unlinkSync(p);
+      } catch {}
+    }
+  } catch {}
+}
+
 function _trace(event, result, data) {
   try {
     const traceDir = path.join(require("os").homedir(), ".claude", ".qualia-traces");
     if (!fs.existsSync(traceDir)) fs.mkdirSync(traceDir, { recursive: true });
+    // Prune ~1% of the time (cheap on most invocations, bounded over time).
+    if (Math.random() < 0.01) _pruneTraces(traceDir);
     const entry = {
       hook: event,
       result: result || "allow",
@@ -564,8 +586,17 @@ function cmdTransition(opts) {
   }
 
   if (target === "polished") {
-    if (s.phases[s.phases.length - 1])
-      s.phases[s.phases.length - 1].status = "verified";
+    // Mark every passed phase as polished (polish is a whole-project pass).
+    // Previously only the last roadmap row was touched, and was set to
+    // "verified" — which both lost current-phase context and used the wrong
+    // status string. Now we use "polished" on every row that's already at
+    // verified or polished or completed.
+    for (const p of s.phases) {
+      const st = (p.status || "").toLowerCase();
+      if (st === "verified" || st === "polished" || st === "completed" || st === "complete") {
+        p.status = "polished";
+      }
+    }
   }
 
   if (target === "shipped") {
@@ -667,12 +698,29 @@ function cmdInit(opts) {
     resume: "—",
   };
 
-  // Build tracking — current-phase fields reset, lifetime fields preserved
+  // Defensive lifetime hydrate: even if `prevLife.lifetime` is partial (an
+  // older tracking.json missing some keys), the spread would leave gaps that
+  // later `+=` would NaN. Build with safe defaults, then overlay.
+  const defaultLifetime = {
+    tasks_completed: 0,
+    phases_completed: 0,
+    milestones_completed: 0,
+    total_phases: 0,
+    last_closed_milestone: 0,
+  };
+  const lifetime = prevLife
+    ? { ...defaultLifetime, ...(prevLife.lifetime || {}) }
+    : { ...defaultLifetime };
+
+  // Build tracking — current-phase fields reset, lifetime + identity preserved
   const t = {
     project: opts.project,
     client: opts.client || (prevLife ? prevLife.client : ""),
     type: opts.type || (prevLife ? prevLife.type : ""),
     assigned_to: opts.assigned_to || (prevLife ? prevLife.assigned_to : ""),
+    team_id: opts.team_id || (prevLife ? prevLife.team_id || "" : ""),
+    project_id: opts.project_id || (prevLife ? prevLife.project_id || "" : ""),
+    git_remote: opts.git_remote || (prevLife ? prevLife.git_remote || "" : ""),
     milestone: prevLife ? prevLife.milestone : 1,
     phase: 1,
     phase_name: phases[0].name,
@@ -684,16 +732,16 @@ function cmdInit(opts) {
     verification: "pending",
     gap_cycles: {},
     blockers: [],
+    session_started_at: now,
     last_updated: now,
+    last_pushed_at: prevLife ? prevLife.last_pushed_at || "" : "",
     last_commit: prevLife ? prevLife.last_commit : "",
+    build_count: prevLife ? (prevLife.build_count || 0) : 0,
+    deploy_count: prevLife ? (prevLife.deploy_count || 0) : 0,
     deployed_url: prevLife ? prevLife.deployed_url : "",
     notes: "",
-    lifetime: prevLife ? { ...prevLife.lifetime } : {
-      tasks_completed: 0,
-      phases_completed: 0,
-      milestones_completed: 0,
-      total_phases: 0,
-    },
+    submitted_by: opts.assigned_to || (prevLife ? prevLife.submitted_by || "" : ""),
+    lifetime,
   };
   // lifetime.total_phases starts at 0 for new projects. It accumulates only via
   // close-milestone (which adds current total_phases before the next init).
