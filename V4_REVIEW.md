@@ -13,7 +13,7 @@ This document is the single source of truth for what shipped in v4.0.0 and what 
 
 The Qualia Framework v4.0.0 makes `/qualia-new` produce the **entire project journey** (all milestones → Handoff) upfront, enables **end-to-end auto-chaining** of the Road with `--auto`, locks down the **milestone/phase/task hierarchy**, and **rebuilds `/qualia-idk` as a real diagnostician** instead of a router alias.
 
-8 commits. 24 files. +1,696 / −547 lines. 156/156 tests green.
+10 commits on `feature/full-journey` (8 feature + 1 docs + 1 release-state fix). ~28 files touched. 156/156 tests green.
 
 Two local branches, neither pushed:
 
@@ -24,9 +24,11 @@ Two local branches, neither pushed:
 
 ---
 
-## The 8 commits on `feature/full-journey`
+## The commits on `feature/full-journey`
 
 ```
+94bc119 fix(v4): correct v4.0.0 — fold qualia-idk changelog entries into initial release
+ea9e7f3 docs(v4): README, guide.md, SESSION_REPORT updated for v4.0.0 + V4_REVIEW.md handoff
 f790554 release(v4.0.0): full journey — kickoff to handoff on rails
 f62e753 fix(v4/phase-g): milestone summary cumulative task count + smoke tests
 b41a52d feat(v4/phase-f): build_count + deploy_count bump, ERP v4 payload, handoff 4-deliverables
@@ -36,6 +38,8 @@ b41a52d feat(v4/phase-f): build_count + deploy_count bump, ERP v4 payload, hando
 2e371c2 feat(v4/phase-a): model foundation — milestones[] + readiness guards
 8ae5b0e release(v3.7.0): story-file plan format (from feature/story-file-plans)
 ```
+
+**Release-point:** `94bc119` is the canonical v4.0.0 HEAD (package.json = "4.0.0", CHANGELOG has a single [4.0.0] section with `/qualia-idk` folded in). Tag v4.0.0 at this commit.
 
 ---
 
