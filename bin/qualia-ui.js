@@ -17,6 +17,7 @@
 //   next <command>                       — "Run: /qualia-X" footer
 //   end <status> [next-command]          — closing banner with optional next
 //   update <current> <latest>            — sticky framework update banner
+//   plan-summary <path/to/plan.md>       — story-file dashboard for a plan
 
 const fs = require("fs");
 const path = require("path");
@@ -259,6 +260,130 @@ function cmdEnd(status, nextCmd) {
   console.log("");
 }
 
+// ─── Plan Summary (story-file dashboard) ─────────────────
+// Renders a polished overview of a plan file: phase goal, tasks grouped by wave,
+// persona chips, dependency lines, AC count, validation count. Called by
+// /qualia-plan after the planner and plan-checker finish.
+function cmdPlanSummary(planPath) {
+  if (!planPath) {
+    console.error("Usage: qualia-ui.js plan-summary <path-to-plan.md>");
+    process.exit(1);
+  }
+  let content = "";
+  try {
+    content = fs.readFileSync(planPath, "utf8");
+  } catch (e) {
+    console.error(`Cannot read plan: ${e.message}`);
+    process.exit(1);
+  }
+
+  // ─ Parse frontmatter + phase header ─
+  const fmMatch = content.match(/^---\n([\s\S]+?)\n---/);
+  const fm = {};
+  if (fmMatch) {
+    for (const line of fmMatch[1].split("\n")) {
+      const m = line.match(/^(\w+):\s*(.+?)\s*$/);
+      if (m) fm[m[1]] = m[2].replace(/^["']|["']$/g, "");
+    }
+  }
+  const phaseNum = fm.phase || "?";
+  const phaseGoal = fm.goal || "";
+  const phaseTitleMatch = content.match(/^# Phase \d+:?\s*(.+?)\r?$/m);
+  const phaseTitle = phaseTitleMatch ? phaseTitleMatch[1].trim() : `Phase ${phaseNum}`;
+  const whyPhaseMatch = content.match(/^\*\*Why this phase:\*\*\s*(.+?)\r?$/m);
+  const whyPhase = whyPhaseMatch ? whyPhaseMatch[1].trim() : "";
+
+  // ─ Parse tasks ─
+  const taskBlocks = content.split(/^(?=## Task \d+)/m).filter((b) => /^## Task \d+/.test(b));
+  const tasks = taskBlocks.map((block) => {
+    const titleMatch = block.match(/^## Task (\d+)\s*—\s*(.+?)\r?$/m);
+    const wave = parseInt((block.match(/\*\*Wave:\*\*\s*(\d+)/) || [])[1]) || 1;
+    const persona = ((block.match(/\*\*Persona:\*\*\s*(.+?)\r?$/m) || [])[1] || "").trim();
+    const deps = ((block.match(/\*\*Depends on:\*\*\s*(.+?)\r?$/m) || [])[1] || "").trim();
+    const why = ((block.match(/\*\*Why:\*\*\s*([\s\S]+?)(?=\r?\n\*\*|\r?\n##|$)/) || [])[1] || "").trim().replace(/\s+/g, " ");
+    const acBlock = (block.match(/\*\*Acceptance Criteria:\*\*\s*([\s\S]+?)(?=\r?\n\*\*|\r?\n##|$)/) || [])[1] || "";
+    const acCount = (acBlock.match(/^[-*]\s+/gm) || []).length;
+    const validationBlock = (block.match(/\*\*Validation:\*\*[^\n]*\n([\s\S]+?)(?=\r?\n\*\*|\r?\n##|$)/) || [])[1] || "";
+    const validationCount = (validationBlock.match(/^[-*]\s+/gm) || []).length;
+    return {
+      num: titleMatch ? parseInt(titleMatch[1]) : 0,
+      title: titleMatch ? titleMatch[2].trim() : "",
+      wave,
+      persona: (() => {
+        // Strip placeholder syntax ({...}), then only accept the known set
+        const cleaned = persona.replace(/[{}]/g, "").trim().toLowerCase();
+        const valid = ["security", "architect", "ux", "frontend", "backend", "performance"];
+        return valid.includes(cleaned) ? cleaned : "";
+      })(),
+      deps,
+      why,
+      acCount,
+      validationCount,
+    };
+  });
+
+  const contractCount = (content.match(/^### Contract for Task \d+/gm) || []).length;
+  const totalWaves = tasks.length > 0 ? Math.max(...tasks.map((t) => t.wave)) : 0;
+
+  // ─ Render ─
+  console.log("");
+  console.log(`  ${TEAL}${BOLD}▣${RESET} ${WHITE}${BOLD}PLAN${RESET} ${DIM}▸${RESET} ${WHITE}Phase ${phaseNum} — ${phaseTitle}${RESET}`);
+  console.log(`  ${RULE_DIM}`);
+  if (phaseGoal) {
+    console.log(`  ${DIM}Goal${RESET}      ${WHITE}${phaseGoal}${RESET}`);
+  }
+  if (whyPhase) {
+    console.log(`  ${DIM}Why${RESET}       ${WHITE}${whyPhase}${RESET}`);
+  }
+  console.log(`  ${DIM}Shape${RESET}     ${TEAL}${tasks.length}${RESET} ${DIM}tasks${RESET} ${DIM}·${RESET} ${TEAL}${totalWaves}${RESET} ${DIM}waves${RESET} ${DIM}·${RESET} ${TEAL}${contractCount}${RESET} ${DIM}contracts${RESET}`);
+  console.log(`  ${RULE_DIM}`);
+
+  // Persona palette
+  const personaColors = {
+    security: RED,
+    architect: BLUE,
+    ux: "\x1b[38;2;255;182;193m",
+    frontend: TEAL,
+    backend: "\x1b[38;2;186;85;211m",
+    performance: YELLOW,
+  };
+
+  for (let w = 1; w <= totalWaves; w++) {
+    const waveTasks = tasks.filter((t) => t.wave === w);
+    if (!waveTasks.length) continue;
+    console.log("");
+    console.log(`  ${TEAL}»${RESET} ${WHITE}${BOLD}Wave ${w}${RESET} ${DIM}(${waveTasks.length} ${waveTasks.length === 1 ? "task" : "tasks"}, parallel)${RESET}`);
+    for (const t of waveTasks) {
+      const personaChip = t.persona
+        ? ` ${(personaColors[t.persona] || DIM)}[${t.persona}]${RESET}`
+        : "";
+      // Only show the dep chip if it names a real task reference.
+      // Suppress blanks, "none", and template placeholders like "{none | Task N}".
+      const depsClean = (t.deps || "").trim();
+      const depsIsReal =
+        depsClean &&
+        !/^none$/i.test(depsClean) &&
+        !/[{}]/.test(depsClean);
+      const depChip = depsIsReal ? ` ${DIM}← ${depsClean}${RESET}` : "";
+      console.log(`    ${DIM}${t.num}.${RESET} ${WHITE}${t.title}${RESET}${personaChip}${depChip}`);
+      // Suppress placeholder Why text (contains {} braces) to keep the
+      // dashboard clean when the planner hasn't filled it in yet.
+      if (t.why && !/[{}]/.test(t.why)) {
+        const shortWhy = t.why.length > 90 ? t.why.slice(0, 87) + "…" : t.why;
+        console.log(`       ${DIM}${shortWhy}${RESET}`);
+      }
+      const metrics = [];
+      if (t.acCount > 0) metrics.push(`${TEAL}${t.acCount}${RESET} ${DIM}AC${RESET}`);
+      if (t.validationCount > 0) metrics.push(`${TEAL}${t.validationCount}${RESET} ${DIM}checks${RESET}`);
+      if (metrics.length) {
+        console.log(`       ${metrics.join(` ${DIM}·${RESET} `)}`);
+      }
+    }
+  }
+  console.log("");
+  console.log(`  ${RULE_DIM}`);
+}
+
 function cmdUpdate(current, latest) {
   if (!current || !latest) return;
   console.log("");
@@ -291,9 +416,10 @@ switch (cmd) {
   case "next":     cmdNext(rest.join(" ")); break;
   case "end":      cmdEnd(rest[0], rest.slice(1).join(" ")); break;
   case "update":   cmdUpdate(rest[0], rest[1]); break;
+  case "plan-summary": cmdPlanSummary(rest[0]); break;
   default:
     console.error(
-      `Usage: qualia-ui.js <banner|context|divider|ok|fail|warn|info|spawn|wave|task|done|next|end|update> [args]`
+      `Usage: qualia-ui.js <banner|context|divider|ok|fail|warn|info|spawn|wave|task|done|next|end|update|plan-summary> [args]`
     );
     process.exit(1);
 }

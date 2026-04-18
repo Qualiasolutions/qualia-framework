@@ -71,9 +71,18 @@ If the plan has no `## Verification Contract` section (older plans), skip this s
 ## How to Verify
 
 ### 1. Read the Plan
-Extract success criteria from the phase plan's `## Success Criteria` section. Also extract the `## Verification Contract` if present.
 
-### 2. For Each Criterion, Run the 3-Level Check
+Extract THREE layers of truth from the plan file:
+
+1. **Phase-level truths** — the `## Success Criteria` section
+2. **Task-level Acceptance Criteria** — the `**Acceptance Criteria:**` bullets inside each `## Task N` block. These describe user-observable behavior PER TASK and should all be true.
+3. **Verification Contract** — the `## Verification Contract` section with testable commands.
+
+Contracts (layer 3) take priority because they're machine-executable. Acceptance Criteria (layer 2) are the bridge between task and phase — if all AC across all tasks pass, the phase success criteria should follow.
+
+### 2. For Each Criterion (Phase + Per-Task AC), Run the 3-Level Check
+
+First, walk every task's Acceptance Criteria. For each AC, ask: does the code produce this observable behavior? Grep the artifacts, trace the wiring, inspect the route handler. Then run the 3-level check below on each phase-level Success Criterion.
 
 ```bash
 # Level 2: Does the file exist?

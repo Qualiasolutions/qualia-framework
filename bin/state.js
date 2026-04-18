@@ -345,9 +345,13 @@ function checkPreconditions(current, target, opts) {
     const taskHeaders = planContent.match(/^## Task \d+/gm);
     if (!taskHeaders || taskHeaders.length === 0)
       return fail("INVALID_PLAN", "Plan file has no task headers (expected '## Task N')");
+    // Accept either legacy "**Done when:**" or story-file "**Acceptance Criteria:**"
+    // so old in-flight plans don't break on upgrade.
     const doneWhenCount = (planContent.match(/\*\*Done when:\*\*/g) || []).length;
-    if (doneWhenCount < taskHeaders.length)
-      return fail("INVALID_PLAN", `${taskHeaders.length} tasks but only ${doneWhenCount} 'Done when:' entries`);
+    const acCount = (planContent.match(/\*\*Acceptance Criteria:\*\*/g) || []).length;
+    const anchors = doneWhenCount + acCount;
+    if (anchors < taskHeaders.length)
+      return fail("INVALID_PLAN", `${taskHeaders.length} tasks but only ${anchors} 'Done when:' or 'Acceptance Criteria:' anchors`);
   }
 
   if (target === "verified") {
@@ -854,12 +858,15 @@ function cmdValidatePlan(opts) {
     errors.push("No task headers found (expected '## Task N — title')");
   }
 
-  // Check "Done when" exists for each task
+  // Check "Done when" OR "Acceptance Criteria" anchor exists for each task
+  // (story-file format uses Acceptance Criteria; legacy format uses Done when)
   const taskCount = taskHeaders ? taskHeaders.length : 0;
   const doneWhenCount = (content.match(/\*\*Done when:\*\*/g) || []).length;
-  if (doneWhenCount < taskCount) {
+  const acCount = (content.match(/\*\*Acceptance Criteria:\*\*/g) || []).length;
+  const anchors = doneWhenCount + acCount;
+  if (anchors < taskCount) {
     errors.push(
-      `${taskCount} tasks but only ${doneWhenCount} 'Done when:' entries`
+      `${taskCount} tasks but only ${anchors} 'Done when:' or 'Acceptance Criteria:' anchors`
     );
   }
 
@@ -958,6 +965,7 @@ function cmdValidatePlan(opts) {
     phase,
     task_count: taskCount,
     done_when_count: doneWhenCount,
+    ac_count: acCount,
     contract_count: contractCount,
     warnings: warnings.length > 0 ? warnings : undefined,
   });

@@ -34,7 +34,11 @@ Each truth → one task. 2-5 tasks per phase. Each task must fit in one context 
 - **Wave 2:** Tasks that depend on Wave 1 (run after Wave 1 completes)
 - Most phases need 1-2 waves. If you need 3+, your tasks are too granular.
 
-### 4. Write the Plan
+### 4. Write the Plan (Story-File Format)
+
+Plans are STORY FILES, not task lists. Every task is a self-contained package that embeds *why*, *what*, and *how to verify* — so the builder can execute without re-reading PRDs and the verifier has explicit acceptance targets.
+
+Use `~/.claude/qualia-templates/plan.md` as the structural reference. Every task block MUST include: **Wave, Files, Depends on, Why, Acceptance Criteria, Action, Validation, Context.** Persona is optional.
 
 ```markdown
 ---
@@ -46,40 +50,45 @@ waves: {count}
 
 # Phase {N}: {Name}
 
-Goal: {what must be true when done}
+**Goal:** {what must be TRUE when this phase is done}
+**Why this phase:** {one sentence — what this unlocks}
 
 ## Task 1 — {title}
 **Wave:** 1
-**Files:** {files to create or modify}
-**Action:** {exactly what to build — specific enough for a junior dev to follow}
-**Context:** Read @{file references the builder needs}
-**Done when:** {observable, testable criterion}
+**Persona:** {optional: security | architect | ux | frontend | backend | performance | none}
+**Files:** {specific paths}
+**Depends on:** {none | Task N}
 
-## Task 2 — {title}
-**Wave:** 1
-**Files:** {files}
-**Action:** {what to build}
-**Done when:** {criterion}
+**Why:** {one-sentence rationale — what problem this solves}
 
-## Task 3 — {title}
-**Wave:** 2 (after Task 1, 2)
-**Files:** {files}
-**Action:** {what to build}
-**Done when:** {criterion}
+**Acceptance Criteria:**
+- {observable user-facing behavior 1}
+- {observable user-facing behavior 2}
+
+**Action:** {concrete steps with function names, imports, patterns}
+
+**Validation:** (builder self-check)
+- `{exact command}` → expected output
+
+**Context:** Read @{file references}
 
 ## Success Criteria
-- [ ] {truth 1 — what the user can do}
-- [ ] {truth 2}
-- [ ] {truth 3}
+- [ ] {phase-level truth 1}
+- [ ] {phase-level truth 2}
 ```
 
 ## Task Specificity (Mandatory)
 
-Every task MUST have these three fields with concrete content:
+Every task MUST have these fields with concrete content:
 
-- **Files:** Absolute paths from project root. Not "the auth files" or "relevant components". Specific: `src/app/auth/login/page.tsx`, `src/lib/auth.ts`. If creating a file, state what it exports. If modifying, state what changes.
-- **Action:** At least one concrete instruction — not just "implement auth". Reference specific functions, components, or patterns. "Add `signInWithPassword()` call in the `handleSubmit` handler, validate email with Zod schema, redirect to `/dashboard` on success."
-- **Done when:** Testable, not fuzzy. Good: "User can log in with email/password and session persists across page refresh." Bad: "Auth works." Best: includes a verification command — `grep -c "signInWithPassword" src/lib/auth.ts` returns non-zero.
+- **Files:** Absolute paths from project root. Not "the auth files" or "relevant components". Specific: `src/app/auth/login/page.tsx`, `src/lib/auth.ts`. If creating, state what it exports. If modifying, state what changes.
+- **Depends on:** Explicit task numbers this task requires, OR `none`. This is what enables wave assignment and parallel-safe execution. Do not leave it blank.
+- **Why:** One sentence explaining the *motivation* — what problem this solves, what would break without it. Not "implement auth" but "Session persistence is the #1 abandonment trigger; verification emails are wasted without it."
+- **Acceptance Criteria:** 2-4 bullet points describing what the user can observe when this task is done. Not "auth works" but "User signs up, receives verification email, clicks link, lands on /dashboard with session persisted across refresh."
+- **Action:** At least one concrete instruction. Reference specific functions, components, patterns: "Add `signInWithPassword()` call in the `handleSubmit` handler, validate email with Zod schema, redirect to `/dashboard` on success."
+- **Validation:** 1-3 grep/curl/tsc commands the builder runs BEFORE committing. These are the builder's self-check — they prove the task actually produced running code, not just files.
+
+**Persona (optional):** If a task has a clear specialist lens (security, architect, ux, frontend, backend, performance), set `**Persona:**` so the builder weights relevant rules. Leave blank or set `none` if generic.
 
 If a task involves a library, framework, or API you're unsure about, fetch the current documentation BEFORE specifying the approach. Don't guess at APIs.
 
@@ -89,7 +98,7 @@ Preferred order:
 
 Your training data is often stale. A two-second lookup is cheaper than a wrong task specification.
 
-**Self-check:** Before returning the plan, verify every task has specific file paths, concrete actions, and testable done-when criteria. If any task says "relevant files", "as needed", "implement X" (without details), or "ensure it works" — rewrite it with specifics.
+**Self-check:** Before returning the plan, verify every task has: specific file paths, an explicit Depends on line, a one-sentence Why, 2-4 Acceptance Criteria, concrete Action, and 1-3 Validation commands. If any field says "relevant files", "as needed", "implement X" (without details), or "ensure it works" — rewrite it with specifics. If you can't write a Why, the task is probably not needed.
 
 ## Verification Contracts
 

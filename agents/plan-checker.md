@@ -34,29 +34,42 @@ Plan must have YAML frontmatter with:
 
 **FAIL if:** frontmatter missing, incomplete, or `goal` differs from ROADMAP.md.
 
-### Rule 2: Every task has the 3 mandatory fields
+### Rule 2: Every task has the 6 mandatory story-file fields
 
-Each `## Task N — title` block must include:
+Each `## Task N — title` block must include ALL of these:
+
+- **Wave:** integer (e.g. `**Wave:** 1`)
 - **Files:** specific absolute paths (not "the auth files", not "relevant components")
-- **Action:** concrete instructions (not "implement auth", not "add the feature")
-- **Done when:** testable criterion (not "auth works", not "it's done")
+- **Depends on:** explicit task numbers OR `none` (not blank)
+- **Why:** one-sentence rationale — what problem this solves (not "implement X")
+- **Acceptance Criteria:** 2-4 observable user-facing behaviors as bullet points
+- **Action:** concrete instructions with specific functions/imports/patterns
+- **Validation:** 1-3 grep/curl/tsc commands the builder runs before committing
 
-**FAIL if:** any task missing any of the 3 fields, OR any field is vague.
+`**Persona:**` is optional — warn if present but not one of {security, architect, ux, frontend, backend, performance, none}.
+
+**FAIL if:** any task missing any of the 7 required fields, OR any field is vague.
 
 **How to detect vague:**
-- `Files: {filenames}` → pass
-- `Files: relevant files` → fail
-- `Action: Build the login page using Supabase auth with email/password, validate with Zod, redirect to /dashboard` → pass
-- `Action: Implement authentication` → fail
-- `Done when: grep -c "signInWithPassword" src/lib/auth.ts returns non-zero` → pass
-- `Done when: auth works` → fail
+- `Files: relevant files` → FAIL
+- `Files: src/lib/auth.ts, src/app/login/page.tsx` → PASS
+- `Why: implement authentication` → FAIL (that's a what, not a why)
+- `Why: Session persistence is the #1 abandonment trigger in the onboarding funnel` → PASS
+- `Acceptance Criteria: - auth works` → FAIL (not observable)
+- `Acceptance Criteria: - User signs up with email, sees verification prompt, clicks link, lands on /dashboard with session` → PASS
+- `Action: Implement auth` → FAIL
+- `Action: Add signInWithPassword() call in handleSubmit, validate with Zod, redirect to /dashboard on success` → PASS
+- `Validation: it should work` → FAIL
+- `Validation: grep -c "signInWithPassword" src/lib/auth.ts → ≥ 1` → PASS
+- `Depends on:` (blank) → FAIL — must be explicit `none` or `Task N`
 
-### Rule 3: Wave assignments are correct
+### Rule 3: Wave assignments are correct and consistent with Depends on
 
-Each task has a `**Wave:** {N}` field. Waves group tasks for parallel execution.
+Each task has a `**Wave:** {N}` field. Waves group tasks for parallel execution. The wave number must be consistent with the task's `**Depends on:**` line.
 
 **FAIL if:**
-- Task in Wave 2 doesn't reference a Wave 1 task as a dependency
+- Task in Wave 2+ has `Depends on: none` (contradicts wave ordering — should be Wave 1)
+- Task in Wave N has a dependency on a task in Wave ≥N (impossible — dep must be in an earlier wave)
 - Tasks in same wave touch the same files (file conflict — can't run in parallel)
 - More than 3 waves (tasks too granular)
 

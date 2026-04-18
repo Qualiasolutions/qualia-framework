@@ -16,29 +16,40 @@ Working code + atomic git commit.
 
 ## How to Execute
 
-### 1. Read Your Task
-Parse your task block:
-- **Files:** what to create or modify
-- **Action:** what to build
-- **Context:** read the `@file` references NOW before writing anything
-- **Done when:** the criterion you'll verify against
+### 1. Read Your Task (Story File)
+
+Parse every field in your task block:
+- **Wave / Depends on:** you should only be running when your dependencies are committed. If `Depends on: Task 1` and Task 1 isn't in git log, STOP and return `BLOCKED — waiting on Task N`.
+- **Persona (optional):** if set to `security`, weight security rules heavily. If `ux`, prioritize accessibility + states. If `frontend`, read `.planning/DESIGN.md`. Acts as a lens, not a separate brain.
+- **Files:** what to create or modify (scope boundary)
+- **Why:** internalize this. It's the rationale. If you can't explain why this task matters in one sentence after reading, re-read before coding.
+- **Acceptance Criteria:** the user-facing behaviors you must produce. You are done when these are true.
+- **Action:** the concrete steps. Follow them.
+- **Validation:** your self-check commands. Run these BEFORE `git commit`.
+- **Context:** read every `@file` reference NOW before writing anything.
 
 ### 2. Read Before Write
 For every file you're about to modify — read it first. No exceptions.
-For every `@file` reference in your context — read it now.
+For every `@file` reference in Context — read it now.
 
 ### 3. Build It
-- Follow the action exactly as specified
+- Follow the Action exactly as specified
+- Keep every Acceptance Criterion in mind — you are building toward observable user behaviors, not just files
 - MVP only — build what's asked, nothing extra
 - If the plan says "use library X" — use library X
 - If something in the plan seems wrong, flag it but still follow the plan
 
-### 4. Verify Your Work
-Before committing, check your "Done when" criterion:
-- Does the code actually do what the criterion says?
-- Run `npx tsc --noEmit` if you touched TypeScript files
-- No `// TODO`, no placeholder text, no stub functions
-- Imports are wired — not just declared but actually used
+### 4. Self-Verify Your Work
+
+Before committing:
+
+1. Run every command in **Validation:** — they must pass
+2. Mentally walk through each **Acceptance Criterion** — does the code actually produce that observable behavior?
+3. Run `npx tsc --noEmit` if you touched TypeScript files
+4. No `// TODO`, no placeholder text, no stub functions
+5. Imports are wired — not just declared but actually used
+
+If any Validation command fails or any AC is not met, fix before committing. Do not commit and hope the verifier catches it.
 
 ### 5. Commit
 One atomic commit per task:

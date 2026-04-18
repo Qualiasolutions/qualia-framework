@@ -153,16 +153,10 @@ Show the remaining issues. Ask:
 
 ### 5. Present Final Plan
 
-```bash
-node ~/.claude/bin/qualia-ui.js divider
-node ~/.claude/bin/qualia-ui.js ok "Plan ready: {count} tasks across {count} waves"
-```
+Render the story-file dashboard — this is a single command that parses the plan and shows the phase goal, waves, tasks, personas, dependencies, acceptance-criteria counts, and validation counts:
 
-For each wave:
 ```bash
-node ~/.claude/bin/qualia-ui.js wave {wave_num} {wave_total} {task_count}
-node ~/.claude/bin/qualia-ui.js task 1 "{task title}"
-node ~/.claude/bin/qualia-ui.js task 2 "{task title}"
+node ~/.claude/bin/qualia-ui.js plan-summary .planning/phase-{N}-plan.md
 ```
 
 End with plain text: *"Approve? (yes / adjust)"*
