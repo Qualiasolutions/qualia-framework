@@ -320,10 +320,10 @@ function cmdJourneyTree(journeyPath) {
 
   // Project name from frontmatter if present
   const projMatch = content.match(/^project:\s*"?(.+?)"?\s*$/m);
-  const projectName = projMatch ? projMatch[1] : projectName();
+  const projName = projMatch ? projMatch[1] : projectName();
 
   console.log("");
-  console.log(`  ${TEAL}${BOLD}◯${RESET} ${WHITE}${BOLD}JOURNEY${RESET} ${DIM}▸${RESET} ${WHITE}${projectName}${RESET}`);
+  console.log(`  ${TEAL}${BOLD}◯${RESET} ${WHITE}${BOLD}JOURNEY${RESET} ${DIM}▸${RESET} ${WHITE}${projName}${RESET}`);
   console.log(`  ${RULE_DIM}`);
   console.log(`  ${DIM}${milestones.length} milestones · currently at M${currentMilestone}${RESET}`);
   console.log("");

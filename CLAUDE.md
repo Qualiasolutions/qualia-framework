@@ -23,24 +23,36 @@ Next.js 16+, React 19, TypeScript, Supabase, Vercel. Voice: Retell AI, ElevenLab
 
 ## The Road (how projects flow)
 
+v4 hierarchy: **Project → Journey → Milestones (2–5, Handoff always last) → Phases (2–5 tasks each) → Tasks (one commit, one verification contract).**
+
 ```
-/qualia-new → set up project
+/qualia-new        → kickoff + parallel research + JOURNEY.md (all milestones upfront)
+                     add --auto to chain the whole road end-to-end
      ↓
-For each phase:
-  /qualia-plan  → plan the phase (planner agent, fresh context)
-  /qualia-build → build it (builder subagents per task, fresh context each)
-  /qualia-verify → verify it works (verifier agent, goal-backward checks)
+For each milestone, for each phase:
+  /qualia-plan     → plan the phase (planner + plan-checker revision loop, fresh context)
+  /qualia-build    → build it (builder subagents per task, wave-based parallel)
+  /qualia-verify   → goal-backward check (verifier agent, fresh context)
      ↓
-/qualia-polish → design/UX pass
-/qualia-ship   → deploy to production
-/qualia-handoff → deliver to client
+/qualia-milestone  → close milestone, archive artifacts, prep next (human gate)
+     ↓ (repeat for each milestone until Handoff)
+Final milestone = Handoff:
+  /qualia-polish   → design/UX pass (Phase 1 of Handoff)
+  (content + SEO)  → Phase 2
+  (final QA)       → Phase 3
+  /qualia-ship     → deploy to production (quality gates → deploy → verify)
+  /qualia-handoff  → 4 deliverables: credentials, doc, final update, report
      ↓
 Done.
 
-Lost? → /qualia (tells you exactly what's next)
-Quick fix? → /qualia-quick (skip planning for small tasks)
-End of day? → /qualia-report (mandatory before clock-out)
+Lost?        → /qualia        (state router — tells you the next command)
+Stuck/weird? → /qualia-idk    (diagnostic — spawns plan-view + code-view agents in parallel)
+Quick fix?   → /qualia-quick  (skip planning for small tasks)
+Paused?      → /qualia-resume (restore from .continue-here.md or STATE.md)
+End of day?  → /qualia-report (mandatory before clock-out; writes ERP payload)
 ```
+
+**Human gates:** journey approval after `/qualia-new`, then one at each milestone boundary via `/qualia-milestone`. `--auto` runs everything between gates automatically.
 
 ## Context Isolation
 Every task runs in a fresh subagent context. Task 50 gets the same quality as Task 1.

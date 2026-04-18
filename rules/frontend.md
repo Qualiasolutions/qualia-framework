@@ -109,18 +109,10 @@ These are Qualia brand standards — mandatory for every frontend component. Not
 If `.planning/DESIGN.md` exists in the project, it takes precedence over these defaults.
 Read it before any frontend work. It contains project-specific: palette, typography, spacing, component patterns.
 
-## Impeccable Design Skills (global)
-- `/polish` — Final detail pass before shipping
-- `/bolder` — Amplify safe/boring designs
-- `/design-quieter` — Tone down overly aggressive designs
-- `/animate` — Add purposeful micro-interactions
-- `/colorize` — Inject strategic color into monochrome UIs
-- `/clarify` — Fix unclear UX copy, labels, error messages
-- `/critique` — Design director-level review
-- `/distill` — Strip unnecessary complexity
-- `/delight` — Add memorable touches and personality
-- `/harden` — Edge cases, overflow, i18n robustness
-- `/responsive` — Cross-device responsive adaptation
+## Qualia design commands
+- `/qualia-design` — One-shot design transformation (critique + fix + polish + responsive + harden)
+- `/qualia-polish` — Final detail pass before shipping (run after all phases verified)
+- `/qualia-review` — Scored production audit
 
 ### Recommended workflow
-1. Build feature → 2. `/critique` → 3. `/polish` → 4. `/harden` → ship
+1. Build feature → 2. `/qualia-design` → 3. `/qualia-polish` → ship

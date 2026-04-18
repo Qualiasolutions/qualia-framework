@@ -87,7 +87,7 @@ git commit -m "style: design transformation"
   - {key change 2}
   - {key change 3}
 
-  Fine-tune: /bolder, /design-quieter, /colorize, /animate
+  Next: /qualia-polish (final pass) · /qualia-review (scored audit)
 ```
 
 ## Rules

@@ -970,7 +970,20 @@ and install codes.
 - Core skills, agents, hooks, rules, and templates.
 - `bin/install.js` and `bin/cli.js` installer / CLI.
 
-[Unreleased]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/Qualiasolutions/qualia-framework/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.7.0...v4.0.0
+[3.7.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.6.0...v3.7.0
+[3.6.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.5.0...v3.6.0
+[3.5.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.4.2...v3.5.0
+[3.4.2]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.4.1...v3.4.2
+[3.4.1]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.4.0...v3.4.1
+[3.4.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.3.2...v3.4.0
+[3.3.2]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.3.1...v3.3.2
+[3.3.1]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.3.0...v3.3.1
+[3.3.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.2.1...v3.3.0
+[3.2.1]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.2.0...v3.2.1
+[3.2.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.1.0...v3.2.0
+[3.1.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.10.0...v3.0.0
 [2.10.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v2.8.1...v2.9.0

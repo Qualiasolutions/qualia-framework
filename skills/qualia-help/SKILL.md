@@ -12,14 +12,25 @@ Opens a Qualia-themed HTML reference guide in your default browser.
 ### 1. Generate the HTML
 
 ```bash
-# Read the template and inject the current version
-VERSION=$(node -e "console.log(require(require('os').homedir() + '/.claude/.qualia-config.json').version || 'v3')" 2>/dev/null || echo "v3")
+# Read the template and inject the current version.
+# Prefer .qualia-config.json; fall back to the framework package.json; last resort is the
+# literal string "latest" so the UI never lies about a specific version.
+VERSION=$(node -e "
+  const fs = require('fs'), path = require('path'), os = require('os');
+  const cfg = path.join(os.homedir(), '.claude', '.qualia-config.json');
+  const pkg = path.join(os.homedir(), '.claude', 'qualia-framework', 'package.json');
+  try { const v = JSON.parse(fs.readFileSync(cfg,'utf8')).version; if (v) { console.log(v); process.exit(0); } } catch {}
+  try { const v = JSON.parse(fs.readFileSync(pkg,'utf8')).version; if (v) { console.log('v'+v); process.exit(0); } } catch {}
+  console.log('latest');
+" 2>/dev/null || echo "latest")
 TEMPLATE="$HOME/.claude/qualia-templates/help.html"
 OUTPUT="/tmp/qualia-help.html"
 
-# If template doesn't exist, check the framework install
+# If template doesn't exist in the user home, check the installed framework copy.
 if [ ! -f "$TEMPLATE" ]; then
-  TEMPLATE="$(dirname "$(dirname "$(which qualia-framework 2>/dev/null || echo '')")")/templates/help.html"
+  for CANDIDATE in "$HOME/.claude/qualia-framework/templates/help.html"; do
+    if [ -f "$CANDIDATE" ]; then TEMPLATE="$CANDIDATE"; break; fi
+  done
 fi
 ```
 
