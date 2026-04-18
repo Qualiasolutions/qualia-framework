@@ -28,7 +28,15 @@ Upload a session report.
 ```
 Authorization: Bearer <api-key>
 Content-Type: application/json
+Idempotency-Key: <uuid>   # optional; 24h replay window — see below
 ```
+
+**Idempotency-Key behavior (v3.6+):**
+When present, must be a valid UUID. Replays of the same key within 24h return
+the original `report_id` with `Idempotent-Replay: true` response header and
+200 status — no new row is created. Invalid UUID format returns 400.
+Independent of `client_report_id` UPSERT (both can be used together; see
+below).
 
 **Request Body:**
 ```json
@@ -88,10 +96,26 @@ accept both shapes: if object, use `gap_cycles[String(phase)] || 0`.
 ```json
 {
   "ok": true,
-  "report_id": "rpt_abc123def456",
+  "report_id": "QS-REPORT-03",
   "message": "Report received"
 }
 ```
+
+`report_id` semantics:
+- **v4.0.4+ payloads** (`client_report_id` present): ERP echoes the
+  `client_report_id` string back as `report_id` for display consistency.
+  Example: request sends `client_report_id: "QS-REPORT-03"` → response
+  returns `report_id: "QS-REPORT-03"`.
+- **Legacy payloads** (no `client_report_id`): ERP returns its internal UUID
+  (e.g. `"a5304d8b-a5ac-4e22-b0c0-fed5f50299bb"`) as `report_id`.
+
+**Idempotent UPSERT on retry (v4.0.4+):**
+When BOTH `project_id` and `client_report_id` are present, the ERP treats
+`(project_id, client_report_id)` as a unique key and UPSERTs. Retries after
+a transient failure produce the same row and return the same `report_id`
+— no duplicate. This is stronger than the 24h Idempotency-Key window (which
+is exact-replay only) because `client_report_id` uniqueness is enforced
+permanently.
 
 **Response (401 Unauthorized):**
 ```json
@@ -172,7 +196,15 @@ Authorization: Bearer <api-key>
 - When the API key file is missing or empty, the upload is skipped with a warning.
 - Network failures are non-blocking — the report is saved locally regardless.
 - The ERP reads `tracking.json` directly from git for real-time status (no API call needed for passive monitoring).
-- Reports are append-only — no update or delete endpoints exist.
+- Reports are append-only — no PUT/PATCH/DELETE endpoints exist for
+  external callers. Internal idempotent UPSERT on `(project_id,
+  client_report_id)` retries is the one exception (see "Idempotent UPSERT
+  on retry" above).
+- **`dry_run` retention (v4.0.4+):** The ERP deletes rows where
+  `dry_run = true AND submitted_at < now() - 7 days` via a daily cron at
+  03:00 UTC. Production report views (list, project tree, email digests)
+  exclude `dry_run = true` rows at read time by default. Admins can opt in
+  via `includeDryRun: true` on the server-action readers for diagnostics.
 - `tracking.json` includes `milestone` and `lifetime` fields (added in v3.4). These survive across milestone resets and `state.js init` calls. For aggregate reporting, use `lifetime.total_phases` + current `total_phases` for the grand total across all milestones.
 - Backward compatibility: if `lifetime` is absent in tracking.json, treat all counters as 0 and `milestone` as 1.
 
