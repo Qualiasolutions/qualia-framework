@@ -1,111 +1,199 @@
-# Session Report — 2026-04-17
+# Session Report — 2026-04-18
 
 **Project:** qualia-framework
-**Branch:** main (merged from feature/audit-fixes)
-**Released:** v3.4.2 → v3.5.0 → v3.6.0 (3 releases, same night)
+**Branch:** feature/full-journey (local, not pushed)
+**Released:** v3.7.0 (staged on feature/story-file-plans) and **v4.0.0** (staged on feature/full-journey)
 **Owner:** Fawzi Goussous
-**Duration:** ~3 hours
+**Duration:** ~4 hours
 
-## What shipped
+## What this session shipped
 
-Three sequential releases, all on npm at `qualia-framework@3.6.0` (latest).
+Two releases staged on separate feature branches, ready for push + merge + `npm publish`.
 
-| Tag    | Theme              | Commit  | Files | Tests added |
-|--------|--------------------|---------|-------|-------------|
-| v3.4.2 | P0 hotfix          | 874e04a | 8     | 8           |
-| v3.5.0 | P1 hardening       | 8c8603e | 18    | 11          |
-| v3.6.0 | P2 cleanup         | f07478d | 7     | 2           |
+| Tag | Branch | Commits | Theme |
+|---|---|---|---|
+| **v3.7.0** | feature/story-file-plans | 1 commit (8ae5b0e) | Story-file plan format — every phase plan task carries inline Why, Acceptance Criteria, Validation, explicit Depends on |
+| **v4.0.0** | feature/full-journey | 8 commits total (includes v3.7.0) | Full Journey release — /qualia-new maps the entire arc to handoff, --auto chains the Road end-to-end, milestone hierarchy locked, /qualia-idk rebuilt as diagnostician |
 
-**Test suite:** 137 → 148 → 150 (+21 net, all green)
-**Package:** 165 kB, 79 files
+**Test suite:** 150 → 156 green (+6 v4 coverage, 0 regressions).
+**Package:** version bumped 3.6.0 → 4.0.0.
+**Release candidate:** v4.0.0 commit is `f790554` on feature/full-journey.
 
-## What started this
+## Background & trigger
 
-Fawzi: "audit, review, optimize, propose changes — works great now on Linux and Windows but there are a lot of gaps and the ERP sync is still some kind of an issue."
+Fawzi came in with three pain points from Sakani's ERP view:
+1. "Unphased Tasks" and "Phase 0: Central Bank Demo" rendering at the same tree level as "Milestone 1", "Milestone 2", etc. — milestones collapsed into single phases, numbering skipped (missing M5).
+2. `/qualia-new` stops at v1 — team improvises subsequent milestones, no clear path to handoff.
+3. Team members don't understand the framework's dev cycle. Need something a non-technical person can follow without getting lost.
 
-## Audit findings (5 parallel specialist agents)
+Plus: "make it sexier," personalize the Qualia experience, enhance every command for best practices, ship a stable v4.0.
 
-### P0 (ship-blockers fixed in v3.4.2)
+## The approach
 
-1. **pre-push.js stamp never reached the remote.** Hook wrote to `tracking.json` and `git add`-ed it, but the `git push` had already computed its commit list — stamp sat in the index forever. ERP saw stale data on every push. **This was the "ERP sync issue" Fawzi had been chasing.**
-2. **session-start.js threw `ReferenceError` on first run** — `TEAL/RESET/DIM` referenced but never defined. Outer try/catch swallowed it. Every brand-new install showed a blank session.
-3. **/qualia-optimize broken on fresh installs** — referenced four agents (frontend-agent, backend-agent, performance-oracle, architecture-strategist) that don't ship with the framework.
-4. **Local privilege escalation** — `.qualia-config.json` written with default 0644. Any local user could edit `role` to `OWNER` and bypass `branch-guard`.
-5. **Hardcoded shared ERP key** `qualia-claude-2026` shipped to every install. Same value for every employee. Token theft = ERP impersonation.
-6. **Non-atomic dual writes** — STATE.md + tracking.json could corrupt under SIGINT/AV/concurrent invocations.
-7. **close-milestone double-counted on re-run; backfill-lifetime overwrote history.**
+Split the work into labeled phases on a feature branch so commits tell the story:
 
-### P1 (hardening in v3.5.0)
+### v3.7.0 prerequisite — story-file plans
+- `templates/plan.md` rewritten to 7-field story-file format (Wave, Files, Depends on, Why, Acceptance Criteria, Action, Validation, Context + optional Persona)
+- `agents/planner.md` generates the new format
+- `agents/plan-checker.md` validates the 7 fields and cross-checks wave↔deps consistency
+- `agents/builder.md` reads rationale, respects Depends on, runs Validation before commit
+- `agents/verifier.md` adds 3-layer check (phase Success Criteria + per-task AC + Verification Contract)
+- `bin/qualia-ui.js` adds `plan-summary` command — terminal dashboard with colored persona chips, dependency arrows, AC/check counts per task
+- `bin/state.js` accepts both legacy `Done when:` and new `Acceptance Criteria:` anchors (backward-compatible)
 
-8. **branch-guard refspec bypass.** EMPLOYEE could `git push origin feature/x:main` from a feature branch — guard checked current branch, not push target.
-9. **migration-guard false positives:** `MigrationModal.tsx`, commented-out SQL, TEMP tables, partition tables.
-10. **migration-guard false negatives:** `ALTER TABLE … DROP COLUMN`, `DROP DATABASE`, `DROP SCHEMA`, `UPDATE` without WHERE, `GRANT TO PUBLIC` — all undetected.
-11. **service_role scanner trivially bypassable** — literal substring match. `"service_" + "role"` walked through.
-12. **auto-update.js 24h blackout** on failed npm fetches. **And** auto-installed mid-session (corrupted live settings.json).
-13. **pre-compact silent commit failures** — used user identity, no `--no-verify`, broke when user had pre-commit hooks/signing → context loss before compaction.
-14. **statusline ran 3 git spawns per shell prompt** — ~450ms cold prompt on Windows.
-15. **CRLF poisoning** — Windows-saved STATE.md leaked `\r` into captured `phase_name`.
-16. **cli.js cmdMigrate added duplicate hook entries** when home directory changed.
-17. **9 broken @path refs** in skills (`@agents/*` should be `@~/.claude/agents/*`).
-18. **qualia-quick had no trigger phrases** — router never fired it on natural language.
-19. **qualia-map used wrong subagent invocation API.**
-20. **qualia-idk fully redundant** with qualia router (deleted).
-21. **help.html undercounted skills by 9.**
-22. **No GitHub Actions CI** — tests ran only locally.
+Committed on `feature/story-file-plans` as v3.7.0 (`8ae5b0e`). Standalone useful release; branched v4 off of it.
 
-### P2 (cleanup in v3.6.0)
+### v4.0.0 — Full Journey, phased
 
-23. **tracking.json schema drift** vs ERP contract — `gap_cycles` polymorphism, missing fields.
-24. **Trace files grew unboundedly** — no rotation in `~/.claude/.qualia-traces/`.
-25. **`polished` transition mis-marked roadmap** — set last phase to `verified` regardless of context.
-26. **cmdInit hydrated partial lifetime as `NaN`** when older tracking.json was missing keys.
+**Phase A — Model foundation** (`2e371c2`)
+- `templates/journey.md` — new JOURNEY.md schema (hard ceiling 5 milestones, hard floor 2, final milestone always Handoff with 4 fixed phases)
+- `tracking.json` gains `milestone_name`, `milestones[]` (array of closed milestone summaries)
+- `state.js close-milestone` readiness guards: MILESTONE_NOT_READY, MILESTONE_TOO_SMALL (both bypassable with --force)
+- `state.js init` accepts `--milestone_name` and preserves milestones[] across re-init
+- Tests: +4
 
-## How we shipped
+**Phase B — Roadmapper + /qualia-new full-journey output** (`87af253`)
+- `agents/roadmapper.md` rewritten: now produces JOURNEY.md (all milestones) + REQUIREMENTS.md (grouped by milestone) + ROADMAP.md (Milestone 1's phase detail only)
+- **Dropped** the old "no review/deploy/handoff phases" rule. **Replaced** with: final milestone is always literally named "Handoff" with fixed 4 phases.
+- `skills/qualia-new/SKILL.md` rewritten: always runs research (no more `workflow.research` gate), single approval on the whole journey, new `--auto` flag
+- `agents/research-synthesizer.md` thinks across all milestones
+- `skills/qualia-milestone/SKILL.md` reads next milestone from JOURNEY.md (no longer asks user)
+- `templates/requirements.md` multi-milestone format with standard Handoff section (HAND-01..HAND-15)
+- `templates/roadmap.md` scoped to current milestone only
 
-1. Spawned 5 parallel audit agents (one per concern: ERP sync, state machine, hooks, skills, tests). 22 minutes wall-clock, 50+ findings ranked by severity.
-2. Branched `feature/audit-fixes` off main.
-3. v3.4.2: implemented P0 sequentially (overlapping files in state.js + install.js needed careful ordering). 8 fixes + 8 tests.
-4. v3.5.0: spawned 6 parallel implementer agents for non-conflicting hook files + 3 more for safe v3.6.0 cleanup. ~5 minutes wall-clock for 9 files of concurrent edits. Then I added 11 regression tests myself.
-5. v3.6.0: state.js + tracking.json + ERP contract reconciliation, log retention, polish fixes. 2 more tests.
-6. Fast-forward merged to main, tagged v3.4.2/v3.5.0/v3.6.0, pushed all to GitHub.
-7. `npm publish` (Fawzi authenticated and ran).
-8. Post-publish smoke: `npm install qualia-framework@latest` confirms 3.6.0 lands.
+**Phase C — Auto-chain wiring** (`400cd17`)
+- `--auto` flag added to `/qualia-plan`, `/qualia-build`, `/qualia-verify`, `/qualia-milestone`
+- Auto-chain decision table in `/qualia-verify`: PASS → next phase OR milestone close OR ship+handoff; FAIL → gap closure OR halt at limit
+- Two human gates total per project: journey approval + each milestone boundary
 
-## ERP coordination
+**Phase D+E — Builder pre-inline + journey visualization** (`74dd26e`)
+- Builder pre-inlines PROJECT.md + DESIGN.md + Context files into agent prompt BEFORE spawning (GSD-pattern borrowing, saves 3-5 Read calls per task)
+- `qualia-ui.js journey-tree` renders JOURNEY.md as ASCII ladder (green shipped, teal current, dim future, [FINAL] tag for Handoff)
+- `qualia-ui.js milestone-complete` celebration banner
+- 5 new banner actions: milestone ◆, journey ◯, auto ⚡, research ◱, roadmap ◐
+- `/qualia` router renders journey-tree for "you are here" orientation
+- `/qualia-milestone` renders journey-tree + milestone-complete
 
-A second Claude session worked the ERP side in parallel (`feature/erp-v3.4.2-compat`). We disagreed once on ship order, then reconciled:
+**Phase F — Ship-side fields + handoff deliverables** (`b41a52d`)
+- `state.js` bumps `build_count` on each 'built' transition, `deploy_count` on each 'shipped' (previously never incremented)
+- `qualia-report` ERP payload now includes all v4 fields (project_id, team_id, git_remote, milestone_name, milestones[], build_count, deploy_count, session_started_at, last_pushed_at)
+- `/qualia-handoff` rewritten: explicit 4 mandatory deliverables — production URL verified (HTTP + latency + auth), docs updated, `.planning/archive/` check, final ERP report
 
-- **Framework v3.4.2/v3.5.0:** wire format unchanged or purely additive — ERP's existing Zod strip-unknowns pattern handles new fields silently.
-- **Framework v3.6.0:** introduces `team_id`, `project_id`, `git_remote`, `last_pushed_at`, `build_count`, `deploy_count`, `session_started_at`, `submitted_by`, `lifetime.last_closed_milestone` — all optional, additive. Documented in `docs/erp-contract.md`.
-- **Existing employee installs:** preserved their `qualia-claude-2026` key on auto-update. No auth break.
-- **30-day grandfather window:** ERP keeps the shared key valid until employees migrate to per-user tokens.
+**Phase G — Smoke test fix + coverage** (`f62e753`)
+- Bug fix: close-milestone summary was recording current phase's tasks, not cumulative milestone total. Fixed via `lifetime.tasks_completed − sum(prior milestones[].tasks_completed)`
+- Tests: +2 (cumulative task count, build_count bump)
 
-ERP session is shipping `feature/erp-v3.4.2-compat` to portal.qualiasolutions.net tonight in parallel.
+**Release (`f790554`)**
+- Single unified v4.0.0 release commit
+- Package bumped 3.7.0 → 4.0.0
+- CHANGELOG.md v4.0.0 entry with full feature list + migration notes
+- `/qualia-idk` rebuilt as real diagnostician (was briefly v4.0.1 in the branch history, folded into v4.0.0 per owner request)
 
-## Verification (pre-publish)
+### The `/qualia-idk` rebuild (folded into v4.0.0)
+
+Before: thin one-line alias to `/qualia`.
+
+Now: interpretive diagnostic. When user says "I don't know what's going on" / "something feels off":
+1. Spawns **Plan view** Explore subagent — reads only `.planning/*`, reports what plan says
+2. Spawns **Code view** Explore subagent in parallel — reads only source code, reports what's actually built, cites file:line
+3. Synthesizes: structured "What I see / The mismatch / What I think is happening / What to do next" in plain language
+4. Maps recommendations to existing commands where applicable
+
+`/qualia` description scoped back to mechanical state routing — no longer claims "idk/stuck/lost/confused" triggers (those route to `/qualia-idk` now).
+
+## Competitive research completed
+
+During the session, ran deep research on competing Claude Code frameworks:
+- **Superpowers** (Jesse Vincent) — 93K stars — rigid 5-phase gates, Visual Companion, cross-agent portability
+- **BMAD-METHOD** — 43K stars — 12-19 named role agents, story files, expansion packs
+- **gstack** (Garry Tan) — 74K stars — 23-role team, persistent browser daemon, /codex cross-model review
+- **GSD** (Get Shit Done, v1+v2) — 54K + 6K stars — state-machine auto-advance, pre-inlined dispatch, adaptive replanning
+- **SuperClaude, Agent OS, Context Engineering/PRP, Claude-Flow, Cursor 2.0, Windsurf** — broader landscape
+
+Patterns borrowed in v4.0.0:
+- **Story-file plan format** (BMAD) — inline rationale + acceptance criteria
+- **State-machine auto-advance** (GSD v2) — the --auto chain
+- **Pre-inline context at dispatch** (GSD v2) — builder's <pre-loaded-context> block
+- **Journey-as-first-class-artifact** (NotebookLM synthesis of Qualia's own docs)
+
+Patterns deferred to v4.1+:
+- Visual/mockup generation (gstack design-shotgun, Superpowers Visual Companion)
+- Cross-model review (gstack /codex)
+- Cross-project vector memory (claude-mem, Claude-Flow)
+- IDE integration
+- Token-budget compression
+
+## Verification at checkpoint
 
 ```
-✅ Git           main at v3.6.0, 3 tags pushed
-✅ Tests         150/150 pass
-✅ Secrets       hardcoded "qualia-claude-2026" removed from install.js
-✅ Secrets       no leaked Bearer/sk-/api_key tokens in bin/ or hooks/
-✅ Package       79 files, 165 kB, no .npmrc/.env in tarball
-✅ Install       end-to-end install works → .qualia-config.json mode 0600 confirmed
-✅ State.js      init writes new schema fields, ALREADY_INITIALIZED guard fires
-✅ Post-publish  npm install qualia-framework@latest → version 3.6.0
+✅ Git            8 commits clean on feature/full-journey
+✅ Tests          156/156 pass
+✅ Smoke          state transitions + close-milestone + milestones[] summary verified on scratch project
+✅ UI             journey-tree + milestone-complete render correctly with real fixtures
+✅ Backward compat  older tracking.json without milestones[]/milestone_name still passes state.js check
+✅ No regressions Vs v3.6 baseline — all 150 existing tests still pass
+✅ Package        version 4.0.0, ready for `npm publish`
+✅ Handoff        V4_REVIEW.md written for next agent
 ```
 
-## Follow-up items (next milestone)
+## Pending (not done by this session)
 
-- **ERP-side per-user token endpoint** (already in ERP session's plan, blocking new-employee onboarding)
-- **Idempotency-Key support** in `/api/v1/reports` (ERP-side)
-- **Drop `cmdMigrate` from cli.js entirely?** It's a leftover from v2.x → v3.x migration. Worth evaluating in v3.7+.
-- **Rolling out per-project gap_cycle_limit override docs.**
-- **Consider HMAC-signing the team file** so a local user can't fabricate `~/.claude/.qualia-team.json` to grant themselves OWNER.
-- **Tests for cmdUninstall and cmdMigrate** — still zero coverage on those functions.
+- **Git push** — both branches are local only
+- **Merge to main** — owner decides merge strategy (recommend v3.7.0 tag then v4.0.0 tag)
+- **`npm publish`** — requires owner auth
+- **Tag creation** — after merge
+- **Live auto-chain verification** — smoke tests covered state machine; the --auto chain (which spawns planner→builder→verifier subagents in sequence) wasn't exercised end-to-end. Recommended first real test is on a throwaway project post-publish.
+- **ERP-side updates** — v4 tracking.json fields are additive; ERP should accept them via its existing Zod strip-unknowns pattern, but worth verifying on deploy.
 
-## Changelog highlights (full detail in CHANGELOG.md)
+## Files the next reviewer should eyeball
 
-- **v3.4.2:** ERP sync stamp finally reaches the remote. Role file mode 0o600. Hardcoded ERP key removed. Atomic writes + lockfile. close-milestone idempotency. backfill Math.max. init clobber guard.
-- **v3.5.0:** branch-guard refspec parsing. migration-guard 5 new patterns + comment stripping. service_role regex hardening. auto-update no longer corrupts session. pre-compact bot author. statusline single git call. CRLF tolerance. CI workflow.
-- **v3.6.0:** tracking.json schema reconciled with ERP contract. Log retention (30 days). polished transition fix. Defensive lifetime hydrate.
+Priority order (highest leverage first):
+
+1. `V4_REVIEW.md` — this file lives in repo root, written as the handoff doc
+2. `CHANGELOG.md` [4.0.0] section — full feature list
+3. `templates/journey.md` — new artifact schema
+4. `agents/roadmapper.md` — biggest agent rewrite
+5. `skills/qualia-new/SKILL.md` — core flow, 14 steps
+6. `skills/qualia-idk/SKILL.md` — new diagnostic
+7. `skills/qualia-verify/SKILL.md` — auto-chain decision table
+8. `skills/qualia-handoff/SKILL.md` — 4 deliverables enforcement
+9. `bin/state.js` close-milestone (~975-1050) — readiness guards + summary append
+10. `bin/qualia-ui.js` journey-tree + milestone-complete functions
+
+## Recommended publish sequence
+
+```bash
+# Push both branches
+git push -u origin feature/story-file-plans
+git push -u origin feature/full-journey
+
+# Merge v3.7.0 to main, tag, push
+git checkout main
+git merge --ff-only feature/story-file-plans
+git tag v3.7.0
+git push origin main --tags
+
+# Merge v4.0.0 to main, tag, push
+git merge --ff-only feature/full-journey
+git tag v4.0.0
+git push origin main --tags
+
+# Publish
+npm publish
+npm view qualia-framework version   # should return 4.0.0
+```
+
+## Known limitations / open questions
+
+1. **Auto-chain not live-tested.** Unit tests cover state transitions; subagent chaining is covered by the skill prompt text but not exercised. First real project run will reveal edge cases.
+2. **Milestone-summary `tasks_completed` accuracy** depends on lifetime counter deltas. Works if close-milestone is the only consumer — verified in test suite.
+3. **/qualia-idk two-pass isolation** depends on Explore subagent respecting the "do not read .planning/" and "do not read source code" instructions. Prompt-level enforcement, not hard boundary.
+4. **Builder pre-inline** inflates prompt size for monorepos with large DESIGN.md + multiple context files. Acceptable for most projects; could be optimized in v4.1.
+
+## For questions
+
+Contact: Fawzi Goussous — fawzi@qualiasolutions.net
+
+---
+
+*Written 2026-04-18 at release-candidate time. Supersedes the 2026-04-17 session report covering v3.4.2 / v3.5.0 / v3.6.0.*
