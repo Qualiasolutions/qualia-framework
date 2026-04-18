@@ -8,6 +8,156 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Note: git tags for historical versions were not retained; commit references are approximate
 > and dates reflect commit history rather than npm publish timestamps.
 
+## [4.0.1] — 2026-04-18
+
+### Added
+
+- **`/qualia-idk` is now a real diagnostic skill**, not a `/qualia` alias.
+  Spawns two isolated `Explore` subagents in parallel: one scans `.planning/`
+  only, the other scans the source code only. Each produces a 250-word
+  view of its side (plan-view report + code-view report). The main skill
+  synthesizes both plus the user's stated confusion into a structured
+  "What I see / What I think is happening / What to do next" diagnosis.
+  Catches plan↔code drift that a state-only router can't see.
+
+### Changed
+
+- **`/qualia` description scoped back to mechanical state routing.**
+  Previously claimed "idk / stuck / lost / confused" triggers; those
+  interpretive shades now route to `/qualia-idk`. `/qualia` stays the
+  fast mechanical router ("what's my next command").
+
+## [4.0.0] — 2026-04-18
+
+**Full Journey release.** `/qualia-new` now maps the entire project
+arc from kickoff to client handoff upfront, and the Road can chain
+itself end-to-end in `--auto` mode with only two human gates per
+project. The milestone / phase / task hierarchy is locked down so the
+ERP renders a clean tree, and the team stops improvising milestones
+after each ship.
+
+### The big shift
+
+Before v4, `/qualia-new` produced a v1 ROADMAP and stopped. Each
+subsequent milestone was invented when the previous one shipped,
+leading to structural drift (milestones collapsing into single
+phases, "Phase 0" entries at milestone level, skipped milestone
+numbers). The ERP rendered a flat list of heterogeneous entries.
+
+v4 treats the **Journey** as a first-class artifact:
+
+```
+Project
+└─ Journey (all milestones defined upfront)
+   └─ Milestone (a release — 2-5 total, Handoff is always last)
+      └─ Phase (a feature-sized deliverable, 2-5 tasks)
+         └─ Task (atomic unit, one commit, verification contract)
+```
+
+### Added
+
+- **`.planning/JOURNEY.md`** — the North Star document. Lists every
+  milestone with why-now, exit criteria, and phase sketches. Written
+  during `/qualia-new`, updated on milestone closure. Hard rules: 2-5
+  milestones, ≥ 2 phases per non-Handoff milestone, final milestone
+  is always literally named "Handoff" with the fixed 4-phase template
+  (Polish, Content + SEO, Final QA, Handoff).
+- **`/qualia-new` full-journey flow** — produces JOURNEY.md +
+  REQUIREMENTS.md (grouped by milestone) + ROADMAP.md (M1's phase
+  detail). **Research runs unconditionally** (no more `workflow.research`
+  gate). **Single approval** on the whole journey replaces multiple
+  mid-flow gates.
+- **`--auto` flag on `/qualia-new`, `/qualia-plan`, `/qualia-build`,
+  `/qualia-verify`, `/qualia-milestone`** — chains the Road end-to-end.
+  Two human gates per project total: journey approval at kickoff, and
+  one pause at each milestone boundary ("Continue to M{N+1}?"). One
+  halt case: gap-cycle limit exceeded on a failed phase.
+- **Milestone readiness guards** in `state.js close-milestone`:
+  `MILESTONE_NOT_READY` (any phase not verified) and `MILESTONE_TOO_SMALL`
+  (< 2 phases), both bypassable with `--force`.
+- **`tracking.json.milestones[]`** — array of closed milestone summaries
+  (num, name, total_phases, phases_completed, tasks_completed,
+  shipped_url, closed_at). The ERP uses this to render the project
+  tree without replaying git history.
+- **`tracking.json.milestone_name`** — human name of the current
+  milestone ("Foundation", "Core Features", etc.). Appears in status
+  bar and ERP.
+- **`build_count` and `deploy_count` bump automatically** on every
+  `built` and `shipped` transition. Previously always zero.
+- **Pre-inline context at builder dispatch** (GSD-pattern borrowing).
+  `/qualia-build` reads PROJECT.md, DESIGN.md, and every `@file`
+  referenced in the task's Context BEFORE spawning the builder subagent.
+  Inlines them under `<pre-loaded-context>`. Saves 3-5 Read tool calls
+  per task; builder starts already oriented.
+- **`qualia-ui.js journey-tree`** — ASCII ladder visualization of
+  JOURNEY.md. Shipped milestones = green dot, current = teal diamond,
+  future = dim open circle, Handoff = [FINAL] tag. Shown by
+  `/qualia` router and at `/qualia-milestone` confirmation step.
+- **`qualia-ui.js milestone-complete`** — celebration banner on
+  milestone closure. Distinguishes Handoff closure ("PROJECT SHIPPED")
+  from intermediate milestones ("Next: {name}").
+- **5 new banner actions:** milestone ◆, journey ◯, auto ⚡,
+  research ◱, roadmap ◐.
+- **`qualia-report` ERP payload updated** — now sends all v4 fields
+  (project_id, team_id, git_remote, milestone_name, milestones[],
+  build_count, deploy_count, session_started_at, last_pushed_at) so
+  the ERP renders tree and dedupes correctly.
+
+### Changed
+
+- **`/qualia-handoff` is now explicit about the 4 deliverables** —
+  verified production URL, updated documentation, client assets archive,
+  ERP finalization. Halts if URL is down or latency > 1s, or if
+  `.planning/archive/` is empty (project bypassed `/qualia-milestone`
+  and has no archived milestones).
+- **`/qualia-milestone` reads next milestone from JOURNEY.md** instead
+  of asking the user to name it. Dedicated `journey-tree` visualization
+  at confirmation + `milestone-complete` banner at close.
+- **`roadmapper` agent rewritten** to produce JOURNEY + REQUIREMENTS +
+  ROADMAP. **Dropped** the old "no review/deploy/handoff phases" rule —
+  the Handoff milestone is now a first-class feature milestone with
+  the 4 standard phases and their own requirements (HAND-01..HAND-15
+  in REQUIREMENTS.md).
+- **`plan-checker` Rule 2** — task story-file fields are mandatory
+  (Why / Depends on / Acceptance Criteria / Validation). Inherited
+  from v3.7.0's story-file format.
+- **`templates/requirements.md`** — multi-milestone format with fixed
+  Handoff section.
+- **`templates/roadmap.md`** — scoped to current milestone only, with
+  pointer to JOURNEY.md for the full arc.
+
+### Tests
+
+150 → 156 green. +6 covering: MILESTONE_NOT_READY, MILESTONE_TOO_SMALL,
+milestones[] append idempotency, check-output exposure of milestones +
+milestone_name, milestone summary cumulative task count (not current-
+phase only), build_count bump on `built`.
+
+### Migration
+
+Fully additive. Projects created on v3.x continue to work:
+- Plans without story-file fields: `state.js` accepts both legacy
+  `Done when:` and v3.7.0 `Acceptance Criteria:` anchors.
+- tracking.json missing `milestones[]` or `milestone_name`: `ensureLifetime`
+  hydrates them to `[]` and `""` with zero risk.
+- Projects without JOURNEY.md (legacy): `/qualia-milestone` falls back
+  to asking the user for the next milestone name. Recommended migration:
+  run `/qualia-map` then regenerate JOURNEY.md via the roadmapper, but
+  not required.
+
+### Borrowed ideas (credited)
+
+- **Story-file plan format** — inspired by BMAD-METHOD's story files
+  with embedded rationale and acceptance criteria (arrived in v3.7.0).
+- **State-machine auto-advance** — inspired by GSD v2's `/gsd auto`
+  loop (arrived in v4.0.0 as `--auto`).
+- **Pre-inline context at dispatch** — inspired by GSD v2's
+  pre-inlined dispatch pattern (arrived in v4.0.0 as the builder
+  `<pre-loaded-context>` block).
+- **Journey-as-first-class-artifact** — informed by NotebookLM
+  synthesis across the framework's own documentation (arrived in
+  v4.0.0 as JOURNEY.md).
+
 ## [3.7.0] — 2026-04-18
 
 Story-file plan format. Every phase plan task now carries inline rationale,
