@@ -10,6 +10,7 @@ Execute the phase plan. Each task runs in a fresh subagent context. Independent 
 ## Usage
 `/qualia-build` — build the current planned phase
 `/qualia-build {N}` — build specific phase
+`/qualia-build {N} --auto` — build + chain into `/qualia-verify {N} --auto` when done (no human gate between build and verify)
 
 ## Process
 
@@ -109,6 +110,18 @@ node ~/.claude/bin/state.js transition --to built --phase {N} --tasks-done {done
 ```
 If state.js returns an error, show it to the employee and stop.
 Do NOT manually edit STATE.md or tracking.json — state.js handles both.
+
+### 6. Route (auto-chain aware)
+
+**If invoked with `--auto`:** immediately invoke `/qualia-verify {N} --auto` inline. No pause, no permission ask. Verify will either chain into the next phase (if PASS), into gap closure (if FAIL and gap cycles remain), or halt with clear escalation (if gap limit reached).
+
+```bash
+node ~/.claude/bin/qualia-ui.js info "Auto mode — chaining into /qualia-verify {N}"
+```
+
+Then invoke the `qualia-verify` skill inline with the same `--auto` flag.
+
+**Otherwise (default guided mode):** stop and show the next step:
 
 ```bash
 node ~/.claude/bin/qualia-ui.js end "PHASE {N} BUILT" "/qualia-verify {N}"

@@ -13,6 +13,7 @@ Spawn a planner agent to break the current phase into executable tasks, then val
 `/qualia-plan {N}` — plan specific phase N
 `/qualia-plan {N} --gaps` — plan fixes for verification failures
 `/qualia-plan {N} --skip-check` — skip the plan-checker validation loop (not recommended)
+`/qualia-plan {N} --auto` — plan + auto-chain into `/qualia-build {N} --auto` when done (no human approval between plan and build)
 
 ## Process
 
@@ -171,7 +172,17 @@ node ~/.claude/bin/state.js transition --to planned --phase {N}
 
 If state.js returns an error, show it and stop. Do NOT manually edit STATE.md or tracking.json.
 
-### 7. Route
+### 7. Route (auto-chain aware)
+
+**If invoked with `--auto`:** immediately invoke `/qualia-build {N} --auto` inline. The user already approved the whole journey at `/qualia-new` time — no additional approval needed per phase plan.
+
+```bash
+node ~/.claude/bin/qualia-ui.js info "Auto mode — chaining into /qualia-build {N}"
+```
+
+Then invoke the `qualia-build` skill inline with `--auto`.
+
+**Otherwise (guided mode):** stop and show the next step:
 
 ```bash
 node ~/.claude/bin/qualia-ui.js end "PHASE {N} PLANNED" "/qualia-build {N}"

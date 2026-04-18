@@ -10,6 +10,7 @@ Spawn a verifier agent to check if the phase goal was achieved. Does NOT trust b
 ## Usage
 `/qualia-verify` — verify the current built phase
 `/qualia-verify {N}` — verify specific phase
+`/qualia-verify {N} --auto` — verify + auto-chain: PASS → next phase (or milestone close); FAIL → gap closure; gap limit → halt with escalation
 
 ## Process
 
@@ -99,10 +100,63 @@ node ~/.claude/bin/qualia-ui.js end "PHASE {N} GAPS FOUND" "/qualia-plan {N} --g
 ```bash
 node ~/.claude/bin/state.js transition --to verified --phase {N} --verification {pass|fail}
 ```
-If PASS and more phases: state.js auto-advances to the next phase.
-If FAIL and gap_cycles >= 2: state.js returns GAP_CYCLE_LIMIT — tell the employee to escalate.
-If FAIL and gap_cycles < 2: proceed to `/qualia-plan {N} --gaps`.
+If PASS and more phases in this milestone: state.js auto-advances to the next phase.
+If FAIL and gap_cycles >= limit: state.js returns GAP_CYCLE_LIMIT — escalate.
+If FAIL and gap_cycles < limit: proceed to `/qualia-plan {N} --gaps`.
 Do NOT manually edit STATE.md or tracking.json — state.js handles both.
+
+After state transition, capture the new state for auto-chain routing:
+
+```bash
+NEW_STATE=$(node ~/.claude/bin/state.js check)
+# Parse: .phase (new current phase), .total_phases, .status, .verification
+# Also read .planning/JOURNEY.md to know if this was the last phase of a milestone
+```
+
+### 4b. Route (auto-chain aware)
+
+**In `--auto` mode**, the router decides the next step based on verify result + journey position:
+
+| Result | Journey position | Action |
+|---|---|---|
+| PASS | More phases remain in current milestone | Inline invoke `/qualia-plan {N+1} --auto` |
+| PASS | Last phase of current milestone (not Handoff) | Inline invoke `/qualia-milestone --auto` |
+| PASS | Last phase of Handoff milestone | Inline invoke `/qualia-ship`, then `/qualia-handoff`, then `/qualia-report` |
+| FAIL | gap_cycles < limit | Inline invoke `/qualia-plan {N} --gaps --auto` |
+| FAIL | gap_cycles >= limit | **HALT** — show escalation message, require human intervention |
+
+Detect "last phase of current milestone":
+```bash
+# tracking.json.milestone gives current milestone number
+# .planning/JOURNEY.md describes phases per milestone
+# If the just-verified phase's number == total phases of current milestone → last phase
+```
+
+Detect "last phase of Handoff milestone":
+```bash
+# If the current milestone's name in JOURNEY.md is "Handoff" AND this was its last phase
+```
+
+**Halt case (gap cycle limit)** — stop auto-chain and show:
+
+```bash
+node ~/.claude/bin/qualia-ui.js fail "Phase {N} has failed verification {cycles} times — gap limit reached"
+node ~/.claude/bin/qualia-ui.js warn "Human intervention required. Options:"
+echo "  1. Re-plan this phase from scratch: /qualia-plan {N}"
+echo "  2. Adjust the roadmap — phase scope may be wrong"
+echo "  3. Escalate to Fawzi (for EMPLOYEE role)"
+```
+
+**Default (guided mode)** behavior is unchanged — show the next command and stop:
+
+```bash
+# PASS
+node ~/.claude/bin/qualia-ui.js end "PHASE {N} VERIFIED" "/qualia-plan {N+1}"
+# (or "/qualia-milestone" if last phase of milestone, "/qualia-polish" if overall last phase)
+
+# FAIL
+node ~/.claude/bin/qualia-ui.js end "PHASE {N} GAPS FOUND" "/qualia-plan {N} --gaps"
+```
 
 ### 5. Passive Knowledge Capture (on FAIL)
 

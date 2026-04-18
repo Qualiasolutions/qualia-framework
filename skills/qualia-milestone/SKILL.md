@@ -16,6 +16,7 @@ Triggered after `/qualia-verify` passes on the LAST phase of the current milesto
 ## Usage
 
 `/qualia-milestone` — close the current milestone, open the next from JOURNEY.md
+`/qualia-milestone --auto` — close + open next, then pause at the milestone boundary to ask "Continue to M{N+1}?" (the one human gate in auto mode beyond initial journey approval)
 
 ## Process
 
@@ -137,16 +138,34 @@ git add .planning/
 git commit -m "milestone: close M{N} ({current name}) → open M{N+1} ({next name})"
 ```
 
-### 9. Route
+### 9. Route (auto-chain aware — the milestone boundary is a human gate in auto mode)
 
-If the next milestone is Handoff, suggest `/qualia-plan 1` on the handoff phases.
+**Case A: this WAS the Handoff milestone closing → project is done.**
 
-If this WAS the Handoff milestone closing (i.e., the project is done):
 ```bash
 node ~/.claude/bin/qualia-ui.js end "PROJECT SHIPPED" "/qualia-report"
 ```
 
-Otherwise:
+In `--auto` mode, inline-invoke `/qualia-report` and stop. No further chaining — the project is done.
+
+**Case B: a non-final milestone just closed → next milestone is open.**
+
+**In `--auto` mode**, pause here and ask (this is ONE of the two human gates in auto mode, the other being journey approval at `/qualia-new` time):
+
+- header: "Milestone {N} shipped"
+- question: "Continue to Milestone {N+1}: {next name} now?"
+- options:
+  - "Continue" — inline-invoke `/qualia-plan 1 --auto` for the new milestone
+  - "Pause here" — stop and let the user resume later with `/qualia-plan 1 --auto`
+
+If "Continue": the auto-chain resumes. If "Pause": stop, show:
+
+```bash
+node ~/.claude/bin/qualia-ui.js end "M{N} CLOSED · M{N+1} READY" "/qualia-plan 1 --auto"
+```
+
+**In guided mode**, always stop and show the next step regardless of position:
+
 ```bash
 node ~/.claude/bin/qualia-ui.js end "M{N} CLOSED · M{N+1} OPEN" "/qualia-plan 1"
 ```
