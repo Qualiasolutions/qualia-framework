@@ -1,6 +1,13 @@
 ---
 name: qualia-task
 description: "Build a single task — more structured than /qualia-quick, lighter than /qualia-build. Spawns a fresh builder agent for one focused task."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Agent
+  - AskUserQuestion
 ---
 
 # /qualia-task — Single Task Builder

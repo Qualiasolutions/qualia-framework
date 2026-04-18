@@ -1,6 +1,13 @@
 ---
 name: qualia-quick
 description: "Fast path for small tasks — bug fixes, tweaks, hot fixes. Skips full phase planning. Trigger on 'quick fix', 'small change', 'tweak', 'hot fix', 'one-line fix', 'quick edit', 'small bug'."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
 ---
 
 # /qualia-quick — Quick Task

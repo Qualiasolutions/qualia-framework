@@ -1,6 +1,13 @@
 ---
 name: qualia-map
 description: "Map an existing codebase to infer architecture, stack, conventions, and what's already built. For brownfield projects — run BEFORE /qualia-new so Validated requirements get inferred from existing code."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Grep
+  - Glob
+  - Agent
 ---
 
 # /qualia-map — Codebase Mapping (Brownfield)

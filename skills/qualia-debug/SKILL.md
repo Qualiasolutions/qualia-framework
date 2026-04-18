@@ -1,6 +1,12 @@
 ---
 name: qualia-debug
 description: "Structured debugging — symptom gathering, diagnosis confirmation, root cause analysis. Trigger on 'debug', 'find bug', 'fix error', 'something is broken', 'not working', 'weird behavior', 'layout broken', 'CSS issue', 'slow page', 'performance'."
+allowed-tools:
+  - Bash
+  - Read
+  - Grep
+  - Glob
+  - Agent
 ---
 
 # /qualia-debug — Structured Debugging

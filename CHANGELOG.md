@@ -8,6 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Note: git tags for historical versions were not retained; commit references are approximate
 > and dates reflect commit history rather than npm publish timestamps.
 
+## [4.0.3] — 2026-04-18
+
+**Zero-deferral release.** Closes the last two items that were previously
+deferred as trade-offs.
+
+### Fixed
+
+- `hooks/pre-compact.js`: `--no-verify` and `--no-gpg-sign` are now
+  configurable via `~/.claude/.qualia-config.json`:
+
+  ```json
+  {
+    "pre_compact": {
+      "respect_user_hooks": true,
+      "respect_gpg_signing": true
+    }
+  }
+  ```
+
+  Default behavior is unchanged (bot commits bypass both, because
+  compaction can fire at any moment and pre-commit test suites would
+  routinely block the auto-save and lose STATE.md). Compliance-sensitive
+  projects opt into strict mode per-flag. The flags used are included
+  in the hook trace.
+
+### Added
+
+- **All 26 skills now declare `allowed-tools`** in frontmatter. Per-skill
+  conservative tool unions — wider rather than narrower to avoid
+  breakage. Read-only skills (`qualia-help`, `qualia-resume`) declare
+  it explicitly. The framework no longer relies on the user's default
+  permission mode for tool scoping.
+
 ## [4.0.2] — 2026-04-18
 
 **Stability pass.** Closes every remaining HIGH + MEDIUM item from the
@@ -1098,7 +1131,8 @@ and install codes.
 - Core skills, agents, hooks, rules, and templates.
 - `bin/install.js` and `bin/cli.js` installer / CLI.
 
-[Unreleased]: https://github.com/Qualiasolutions/qualia-framework/compare/v4.0.2...HEAD
+[Unreleased]: https://github.com/Qualiasolutions/qualia-framework/compare/v4.0.3...HEAD
+[4.0.3]: https://github.com/Qualiasolutions/qualia-framework/compare/v4.0.2...v4.0.3
 [4.0.2]: https://github.com/Qualiasolutions/qualia-framework/compare/v4.0.1...v4.0.2
 [4.0.1]: https://github.com/Qualiasolutions/qualia-framework/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/Qualiasolutions/qualia-framework/compare/v3.7.0...v4.0.0

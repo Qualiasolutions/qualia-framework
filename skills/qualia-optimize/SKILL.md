@@ -1,6 +1,14 @@
 ---
 name: qualia-optimize
 description: "Deep optimization pass — reads .planning/ AND codebase to find performance, design, UI, backend, and frontend issues. Spawns parallel specialist agents. Use this skill whenever the user says 'optimize', 'optimization pass', 'find issues', 'qualia-optimize', 'deep optimize', 'performance audit', 'design alignment check', 'speed up', 'slow', 'bundle size', or wants a comprehensive quality sweep. Supports --perf, --ui, --backend, --alignment, --fix flags."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Agent
 ---
 
 # Qualia Optimize — Deep Codebase + Planning Optimization

@@ -1,6 +1,11 @@
 ---
 name: qualia-handoff
 description: "Client delivery — produces the 4 mandatory Handoff deliverables (production URL, documentation, client assets archive, ERP finalization). Triggered at the end of the Handoff milestone."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
 ---
 
 # /qualia-handoff — Client Delivery

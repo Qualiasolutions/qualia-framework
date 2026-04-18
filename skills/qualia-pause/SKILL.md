@@ -1,6 +1,11 @@
 ---
 name: qualia-pause
 description: "Save session context for seamless handoff. Creates .continue-here.md so the next session picks up exactly where you left off. Trigger on 'pause', 'stop for now', 'save progress', 'continue later', 'pick up tomorrow'."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
 ---
 
 # /qualia-pause — Session Handoff

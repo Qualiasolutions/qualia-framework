@@ -1,6 +1,9 @@
 ---
 name: qualia-help
 description: "Open the Qualia Framework reference guide in the browser. A beautiful themed HTML page with all commands, rules, services, and the road. Trigger on 'help', 'how does this work', 'show me the commands', 'qualia help', 'reference'."
+allowed-tools:
+  - Bash
+  - Read
 ---
 
 # /qualia-help — Framework Reference

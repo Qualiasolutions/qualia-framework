@@ -1,6 +1,13 @@
 ---
 name: qualia-review
 description: "Production audit with scored diagnostics. Runs real commands, scores findings by severity. Trigger on 'review', 'audit', 'code review', 'security check', 'production check'."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Grep
+  - Glob
+  - Agent
 ---
 
 # /qualia-review — Production Audit

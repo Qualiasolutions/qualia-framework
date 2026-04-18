@@ -1,6 +1,12 @@
 ---
 name: qualia-skill-new
 description: "Author a new Qualia skill or agent. Use when the user says 'create a new skill', 'add a skill', 'I want to build a skill', 'make this a reusable command', 'turn this into a skill'. Generates the SKILL.md, registers it in the right location, and optionally ships to the framework repo."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - AskUserQuestion
 ---
 
 # /qualia-skill-new — Author a New Skill

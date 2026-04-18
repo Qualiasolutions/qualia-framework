@@ -1,6 +1,16 @@
 ---
 name: qualia-plan
 description: "Plan the current phase — spawns planner, validates with plan-checker in a revision loop (max 3), optionally runs discuss/research first. Use when ready to plan a phase."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Agent
+  - TaskCreate
+  - TaskUpdate
 ---
 
 # /qualia-plan — Plan a Phase

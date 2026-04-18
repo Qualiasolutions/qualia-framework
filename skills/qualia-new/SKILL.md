@@ -1,6 +1,18 @@
 ---
 name: qualia-new
 description: "Set up a new project from scratch — deep questioning, ALWAYS-AUTO research, JOURNEY.md with all milestones to handoff, single approval gate, optional auto-chain into building. Use when starting any new client project."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Agent
+  - AskUserQuestion
+  - TaskCreate
+  - TaskUpdate
+  - TaskList
 ---
 
 # /qualia-new — New Project (Full Journey)

@@ -1,6 +1,14 @@
 ---
 name: qualia-polish
 description: "Design and UX pass — anti-AI-slop, genuine craft, responsive, accessible. Run after all phases are verified."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Agent
 ---
 
 # /qualia-polish — Design Pass

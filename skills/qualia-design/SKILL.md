@@ -1,6 +1,14 @@
 ---
 name: qualia-design
 description: "One-shot design transformation — critiques, fixes, polishes, hardens, makes responsive. No reports, no choices, just makes it professional. Trigger on 'fix the design', 'make it look better', 'redesign', 'design pass', 'make it modern', 'it looks ugly', 'fix the UI'."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Agent
 ---
 
 # /qualia-design — One-Shot Design Transformation

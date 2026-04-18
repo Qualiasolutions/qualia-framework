@@ -1,6 +1,12 @@
 ---
 name: qualia-learn
 description: "Save a learning, pattern, fix, or client preference to the knowledge base. Persists across projects and sessions. Trigger on 'remember this', 'save this pattern', 'learned something', 'note for future', 'client prefers', 'qualia-learn'."
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
 ---
 
 # /qualia-learn — Save Knowledge

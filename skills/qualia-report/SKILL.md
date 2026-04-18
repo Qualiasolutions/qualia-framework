@@ -1,6 +1,11 @@
 ---
 name: qualia-report
 description: "Generate session report and commit to repo. Mandatory before clock-out."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
 ---
 
 # /qualia-report — Session Report

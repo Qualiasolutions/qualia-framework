@@ -1,6 +1,14 @@
 ---
 name: qualia-verify
 description: "Goal-backward verification — checks if the phase ACTUALLY works, not just if tasks completed. Spawns verifier agent."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Agent
 ---
 
 # /qualia-verify — Verify a Phase

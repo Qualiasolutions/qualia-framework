@@ -1,6 +1,12 @@
 ---
 name: qualia-milestone
 description: "Close the current milestone and open the next one — loads the next milestone's scope from JOURNEY.md (no ad-hoc naming). Archives artifacts, marks requirements Complete, regenerates ROADMAP.md for the next milestone."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Agent
 ---
 
 # /qualia-milestone — Milestone Closeout

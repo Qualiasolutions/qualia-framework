@@ -1,6 +1,12 @@
 ---
 name: qualia-idk
 description: "Diagnostic intelligence for 'I don't know what's going on.' Runs two isolated scans (.planning/ vs codebase), cross-references against the user's confusion, then explains the situation in plain language with a concrete recommended next step. Use whenever the user says 'I don't know', 'something feels off', 'not sure what to do', 'am I doing this right', 'what's happening', 'help me understand'."
+allowed-tools:
+  - Bash
+  - Read
+  - Grep
+  - Glob
+  - Agent
 ---
 
 # /qualia-idk — "I Don't Know What's Going On"

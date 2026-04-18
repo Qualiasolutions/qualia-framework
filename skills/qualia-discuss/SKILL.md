@@ -1,6 +1,12 @@
 ---
 name: qualia-discuss
 description: "Capture phase decisions, trade-offs, and constraints BEFORE planning. Use for complex phases with regulatory, compliance, or architectural stakes. Creates .planning/phase-{N}-context.md that planner honors as locked input."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - AskUserQuestion
 ---
 
 # /qualia-discuss — Phase Context Capture

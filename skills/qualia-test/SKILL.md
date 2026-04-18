@@ -1,6 +1,13 @@
 ---
 name: qualia-test
 description: "Generate or run tests for client projects. Trigger on 'write tests', 'add tests', 'test this', 'run tests', 'test coverage', 'need tests for'."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
 ---
 
 # /qualia-test — Test Generator

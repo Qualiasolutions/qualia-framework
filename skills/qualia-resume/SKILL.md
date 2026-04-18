@@ -1,6 +1,9 @@
 ---
 name: qualia-resume
 description: "Restore context from a previous session. Reads .continue-here.md or STATE.md, summarizes where you left off, routes to next action. Trigger on 'resume', 'continue', 'pick up where I left off', 'what was I doing'."
+allowed-tools:
+  - Bash
+  - Read
 ---
 
 # /qualia-resume — Resume Work

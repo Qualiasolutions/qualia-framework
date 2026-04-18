@@ -1,6 +1,16 @@
 ---
 name: qualia-build
 description: "Execute the current phase — spawns builder subagents per task with wave-based parallelization. Fresh context per task."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Agent
+  - TaskCreate
+  - TaskUpdate
 ---
 
 # /qualia-build — Build a Phase

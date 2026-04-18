@@ -1,6 +1,11 @@
 ---
 name: qualia
 description: "Smart router — reads project state (state.js), classifies the situation mechanically, returns the exact next command. Use whenever you type /qualia, 'what next', 'next', 'what now', 'what should I do next', 'what command now'. For deeper 'I don't understand what's going on' / 'something feels off' situations, use /qualia-idk instead — that one actually scans the planning folder and codebase to diagnose the confusion."
+allowed-tools:
+  - Bash
+  - Read
+  - Grep
+  - Glob
 ---
 
 # /qualia — What's Next?

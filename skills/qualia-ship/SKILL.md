@@ -1,6 +1,11 @@
 ---
 name: qualia-ship
 description: "Deploy to production — quality gates, commit, push, deploy, verify. Use when ready to go live."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
 ---
 
 # /qualia-ship — Deploy

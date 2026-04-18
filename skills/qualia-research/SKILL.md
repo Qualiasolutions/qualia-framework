@@ -1,6 +1,13 @@
 ---
 name: qualia-research
 description: "Deep-research a niche domain or library BEFORE planning a specific phase. Spawns the researcher agent with Context7/WebFetch access. Writes to .planning/phase-{N}-research.md."
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Agent
+  - WebFetch
+  - WebSearch
 ---
 
 # /qualia-research — Per-Phase Deep Research
