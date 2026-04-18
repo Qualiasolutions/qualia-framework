@@ -44,17 +44,30 @@ Write for someone who will only read this section.
 
 Don't duplicate full documents. Summarize the 3-5 most important items from each dimension. Link back to the detail docs for readers who want more.
 
-### 4. Derive Roadmap Implications
+### 4. Derive Journey Implications (Multi-Milestone)
 
-This is the most important section. Based on:
-- FEATURES.md MVP definition → what v1 must have
-- ARCHITECTURE.md build order → what depends on what
-- PITFALLS.md phase mapping → what each phase must prevent
+This is the most important section. Suggest the **full milestone arc**, not just a v1 phase list.
 
-Suggest a phase structure. Be explicit about:
-- **What each phase delivers** (user-facing capability)
-- **Why this order** (dependencies or risk-first reasoning)
-- **Research flags** — phases likely needing deeper research during `/qualia-plan`
+Based on:
+- FEATURES.md split (table stakes = v1 across milestones, differentiators = later milestones or post-handoff)
+- ARCHITECTURE.md build order → what depends on what, which foundation must land in Milestone 1 to support final-milestone requirements
+- PITFALLS.md → which risks stall later milestones and need to be addressed in Milestone 1 foundations
+
+Suggest a **2-5 milestone arc ending in Handoff**:
+
+- **Milestone 1 · Foundation** — almost always. DB, auth, base layout, deploy pipeline.
+- **Milestone 2-{N-1} · Core + Expansion** — the value-delivering capabilities, ordered by dependency.
+- **Milestone {N} · Handoff** — ALWAYS the final milestone. Fixed 4 phases: Polish, Content + SEO, Final QA, Handoff.
+
+For each milestone, say:
+- **Name** — short, evocative
+- **Why now** — one plain-language sentence explaining why this follows the previous
+- **Exit criteria** — 2-3 observable outcomes
+- **Phases sketched** — 2-5 phase names with one-line goals (M1 full detail, M2..M{N-1} sketched)
+
+Also suggest:
+- **Research flags** — which milestones likely need deeper research during `/qualia-plan` (the roadmapper may schedule `/qualia-research {N}` for these)
+- **Handoff implications** — what the client needs to take over (credentials, docs, training) — informs the Handoff milestone's scope
 
 ### 5. Set Overall Confidence
 
@@ -79,8 +92,8 @@ Note gaps: areas where research was inconclusive. These will be addressed during
 ```
 Wrote: .planning/research/SUMMARY.md
 Overall confidence: {HIGH/MEDIUM/LOW}
-Suggested phases: {count}
-Research flags: {count} (phases needing deeper research during planning)
+Suggested milestones: {count including Handoff}
+Research flags: {count} (milestones needing deeper research during planning)
 ```
 
-The roadmapper agent reads your SUMMARY.md as context when producing REQUIREMENTS.md and ROADMAP.md.
+The roadmapper agent reads your SUMMARY.md as context when producing JOURNEY.md, REQUIREMENTS.md, and ROADMAP.md (Milestone 1 detail).

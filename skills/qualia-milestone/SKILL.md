@@ -1,160 +1,178 @@
 ---
 name: qualia-milestone
-description: "Close out a completed milestone and prep the next one. Archives the current milestone's artifacts, updates REQUIREMENTS.md to mark v1 requirements Complete, and creates the next milestone roadmap."
+description: "Close the current milestone and open the next one — loads the next milestone's scope from JOURNEY.md (no ad-hoc naming). Archives artifacts, marks requirements Complete, regenerates ROADMAP.md for the next milestone."
 ---
 
 # /qualia-milestone — Milestone Closeout
 
-Use when all feature phases in the current milestone are verified. Archives artifacts, marks requirements Complete, opens a new milestone for the next release.
+Triggered after `/qualia-verify` passes on the LAST phase of the current milestone. Archives the current milestone's artifacts, marks its requirements Complete, and opens the next milestone — **scope pulled directly from JOURNEY.md**, not improvised.
 
 ## When to Use
 
-- After `/qualia-verify N` passes on the LAST phase of a milestone
-- Before starting a v1.5 / v2.0 cycle
+- After `/qualia-verify N` passes on the LAST phase of the current milestone
 - NOT for individual phase completions — use `/qualia-verify N` for that
+- NOT for starting a brand-new project — use `/qualia-new` for that
 
 ## Usage
 
-`/qualia-milestone` — close the current milestone, open the next
+`/qualia-milestone` — close the current milestone, open the next from JOURNEY.md
 
 ## Process
 
 ### 1. Validate Readiness
 
 ```bash
-node ~/.claude/bin/state.js check 2>/dev/null
+node ~/.claude/bin/state.js check
 ```
 
-Check:
-- All phases in STATE.md are `status: verified`
-- `verification: pass` for every phase
-- No open blockers
+`state.js close-milestone` enforces two guards:
+- `MILESTONE_NOT_READY` — any phase not verified
+- `MILESTONE_TOO_SMALL` — milestone has < 2 phases
 
-If not ready:
-```bash
-node ~/.claude/bin/qualia-ui.js fail "Milestone not ready — {reason}"
-```
-Exit.
+If either fires (without `--force`), stop and show the error. The user must verify remaining phases first (or add `--force` for explicit bypass on a preview/demo milestone).
 
-### 2. Banner
+### 2. Banner + Confirm
 
 ```bash
 node ~/.claude/bin/qualia-ui.js banner milestone
 ```
 
-### 3. Confirm Closeout
+Read `.planning/JOURNEY.md` to find the next milestone's name + scope. Show:
+- Current milestone name + phases completed + requirements delivered
+- Next milestone name + phase sketch + why-now from JOURNEY.md
 
-Show:
-- Milestone name (e.g., "v1 — Launch")
-- Phases completed
-- Requirements delivered
-
-- header: "Close milestone?"
-- question: "Close {milestone name} and move to the next milestone?"
+- header: "Close + open next?"
+- question: "Close {current} and open Milestone {N+1}: {next name}?"
 - options:
-  - "Close it" — Archive and open next
-  - "Not yet" — I want to add more first
+  - "Close + open next" — archive this one, regenerate ROADMAP.md for {next name}
+  - "Pause" — don't close yet
 
-### 4. Archive Current Milestone
+### 3. Archive Current Milestone
 
 ```bash
-mkdir -p .planning/archive
-cp .planning/ROADMAP.md .planning/archive/{milestone_slug}-ROADMAP.md
-cp .planning/STATE.md .planning/archive/{milestone_slug}-STATE.md
-cp .planning/tracking.json .planning/archive/{milestone_slug}-tracking.json
-cp -r .planning/phases .planning/archive/{milestone_slug}-phases
+milestone_slug="milestone-{N}-$(echo '{current name}' | tr '[:upper:] ' '[:lower:]-')"
+mkdir -p .planning/archive/$milestone_slug
+
+cp .planning/ROADMAP.md .planning/archive/$milestone_slug/ROADMAP.md
+cp .planning/STATE.md .planning/archive/$milestone_slug/STATE.md
+cp .planning/tracking.json .planning/archive/$milestone_slug/tracking.json
+# Move per-phase artifacts if present
+for f in .planning/phase-*-plan.md .planning/phase-*-verification.md .planning/phase-*-context.md .planning/phase-*-research.md .planning/phase-*-gaps-plan.md; do
+  [ -f "$f" ] && mv "$f" .planning/archive/$milestone_slug/ 2>/dev/null
+done
 ```
 
-### 5. Update REQUIREMENTS.md
+### 4. Mark Requirements Complete
 
-Open `.planning/REQUIREMENTS.md` and:
-- Mark every v1 requirement as Complete in the traceability table
-- Move the `## v1 Requirements` section content to `## Completed (v1)` at the top (for historical reference)
-- Elevate `## v2 Requirements` → `## v1 Requirements` (next milestone's scope)
+Edit `.planning/REQUIREMENTS.md`:
+- In the Traceability table, flip this milestone's REQ-IDs from Pending/In Progress → **Complete**
+- Leave the per-milestone section structure intact (preserves history)
 
-### 6. Ask About Next Milestone
+### 5. Close Milestone in State Machine
 
-- header: "Next milestone"
-- question: "What's the next milestone called?"
-- options (dynamic):
-  - "v1.5 — {suggested name based on v2 requirements}"
-  - "v2.0 — {bigger rewrite}"
-  - "Custom name" — let me type it
-
-### 7. Create New Roadmap
-
-Spawn the roadmapper to create a new ROADMAP.md for the next milestone:
-
-```
-Agent(prompt="
-Read your role: @~/.claude/agents/roadmapper.md
-
-<task>
-Create a new ROADMAP.md for the next milestone.
-
-Milestone name: {milestone name}
-Milestone number: {M+1}
-
-The new v1 requirements (just promoted from old v2) are in .planning/REQUIREMENTS.md.
-The previous milestone's archive is at .planning/archive/.
-
-Build phases for the new milestone scope. Do NOT plan for already-completed requirements.
-", subagent_type="qualia-roadmapper", description="Create next milestone roadmap")
-```
-
-### 8a. Close Milestone in State Machine
-
-Close the current milestone's tracking data before resetting. This preserves lifetime counters (total tasks, phases, milestones completed) across the reset.
+Closes current milestone's counters, appends a summary to `tracking.json` milestones[]:
 
 ```bash
 node ~/.claude/bin/state.js close-milestone
 ```
 
-### 8b. Reset STATE.md via state.js
+If all phases are verified and ≥ 2 phases exist, this succeeds without `--force`. Otherwise add `--force` (rare — usually means the user is closing a preview/demo milestone).
 
-The `init` command resets current-phase fields but preserves `milestone` and `lifetime` data from the close-milestone step above.
+### 6. Read Next Milestone From JOURNEY.md
 
-```bash
-node ~/.claude/bin/state.js init \
-  --project "{project name}" \
-  --client "{client}" \
-  --type "{type}" \
-  --phases '{JSON from new roadmap}' \
-  --total_phases {new N}
+Parse `.planning/JOURNEY.md` to extract the next milestone's:
+- name
+- phase list with goals
+- requirements covered (REQ-IDs)
+- exit criteria
+
+If the next milestone is **Handoff** (always the last milestone), use the fixed 4-phase Handoff template (Polish, Content + SEO, Final QA, Handoff) from the journey template.
+
+If JOURNEY.md doesn't exist (legacy project pre-v4), fall back to asking the user:
+
+- header: "Next milestone"
+- question: "What's the next milestone called?"
+
+Then manually sketch its phases. But ideally every v4 project has a JOURNEY.md from the start.
+
+### 7. Regenerate ROADMAP.md for the New Milestone
+
+Spawn the roadmapper with the next milestone's JOURNEY.md sketch as input:
+
+```
+Agent(prompt="
+Read your role: @~/.claude/agents/roadmapper.md
+
+<mode>next-milestone</mode>
+<journey_file>.planning/JOURNEY.md</journey_file>
+<next_milestone_num>{N+1}</next_milestone_num>
+<next_milestone_name>{next name from JOURNEY.md}</next_milestone_name>
+
+<task>
+Regenerate .planning/ROADMAP.md for Milestone {N+1}. The sketch in JOURNEY.md
+gives you phase names + one-line goals — elevate to full phase-level detail:
+- 2-5 success criteria per phase
+- requirements coverage from REQUIREMENTS.md (section for this milestone)
+- dependency ordering
+
+Do NOT re-plan completed milestones. Do NOT create a new JOURNEY.md — the
+existing one stays the source of truth.
+
+After writing ROADMAP.md, update STATE.md via:
+  node ~/.claude/bin/state.js init --force \\
+    --project '{project}' --client '{client}' --type '{type}' \\
+    --milestone_name '{next name}' \\
+    --phases '<JSON: next milestone phases>' \\
+    --total_phases <count>
+
+--force is needed because a project already exists.
+</task>
+", subagent_type="qualia-roadmapper", description="Open milestone {N+1}")
 ```
 
-### 9. Commit
+### 8. Commit
 
 ```bash
 git add .planning/
-git commit -m "feat({milestone_slug}): close milestone, open {next milestone}"
+git commit -m "milestone: close M{N} ({current name}) → open M{N+1} ({next name})"
 ```
 
-### 10. Route
+### 9. Route
 
+If the next milestone is Handoff, suggest `/qualia-plan 1` on the handoff phases.
+
+If this WAS the Handoff milestone closing (i.e., the project is done):
 ```bash
-node ~/.claude/bin/qualia-ui.js end "MILESTONE {closed} CLOSED" "/qualia-plan 1"
+node ~/.claude/bin/qualia-ui.js end "PROJECT SHIPPED" "/qualia-report"
+```
+
+Otherwise:
+```bash
+node ~/.claude/bin/qualia-ui.js end "M{N} CLOSED · M{N+1} OPEN" "/qualia-plan 1"
 ```
 
 ## What Stays, What Changes
 
 **Stays:**
-- `.planning/PROJECT.md` — the project doesn't change
-- `.planning/archive/` — historical milestones preserved (incl. tracking.json)
-- `tracking.json` lifetime fields — cumulative counters survive across milestones
-- Git history — every commit preserved
+- `.planning/PROJECT.md` — the project identity doesn't change
+- `.planning/JOURNEY.md` — the North Star is the SAME file across all milestones; don't regenerate it
+- `.planning/DESIGN.md` — design system persists
+- `.planning/archive/` — historical milestones preserved
+- `tracking.json` lifetime fields + milestones[] array — cumulative history
 
 **Changes:**
-- `.planning/REQUIREMENTS.md` — Completed section grows, v1 scope shifts
-- `.planning/ROADMAP.md` — new phases for the new milestone
-- `.planning/STATE.md` — reset to Phase 1 of new milestone
+- `.planning/REQUIREMENTS.md` — this milestone's REQ-IDs marked Complete
+- `.planning/ROADMAP.md` — regenerated for the new milestone's phases
+- `.planning/STATE.md` — reset to Phase 1 of the new milestone
 
 **Discarded (but archived):**
-- `.planning/phases/` — the old phase folders move to archive
+- `.planning/phase-*-*.md` files from the closed milestone — moved to archive
 
 ## Rules
 
-1. **Don't close early.** All phases must be `verified` with `pass`. No partial milestones.
-2. **Archive, don't delete.** Old phase work stays accessible via `.planning/archive/`.
-3. **New milestone = new phase numbering.** The next phase is Phase 1 of the new milestone, not Phase {N+1} of the old.
-4. **ERP sync aware.** The ERP reads ROADMAP.md — after milestone close, push to GitHub so the ERP picks up the new phase structure.
+1. **Don't close early.** state.js enforces: all phases verified + ≥ 2 phases, unless `--force`.
+2. **JOURNEY.md is the source of truth for next milestone.** Don't ask the user to name it unless JOURNEY.md is missing (legacy project).
+3. **Archive, don't delete.** Old phase work stays accessible via `.planning/archive/`.
+4. **New milestone = fresh phase numbering.** First phase of the new milestone is Phase 1, not Phase {N+1}.
+5. **ERP sync aware.** tracking.json milestones[] gets a summary entry on close — the ERP reads this to render the tree.
+6. **Handoff is the final milestone.** If the current milestone IS Handoff, there is no "next" — route to `/qualia-report` and the project is done.

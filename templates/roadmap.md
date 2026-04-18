@@ -1,8 +1,22 @@
-# Roadmap: {Project Name}
+# Roadmap · Milestone {N} · {Milestone Name}
 
+**Project:** {Project Name}
+**Milestone:** {N} of {Total} ({"CURRENT" / shipped})
 **Created:** {date}
-**Total phases:** {N}
-**v1 requirements:** {X} covered
+**Phases:** {P}
+**Requirements covered:** {REQ-IDs from this milestone's REQUIREMENTS.md section}
+
+See `JOURNEY.md` for the full project arc. This file is ONLY the current milestone's phases.
+
+## Exit Criteria
+
+What "shipped" means for this milestone:
+
+- {observable outcome 1}
+- {observable outcome 2}
+- {observable outcome 3}
+
+---
 
 ## Phases
 
@@ -25,9 +39,8 @@
 **Success criteria** (observable user behaviors):
 1. {user can do X}
 2. {user can do Y}
-3. {user can do Z}
 
-**Depends on:** none (or: Phase {N})
+**Depends on:** none
 
 ---
 
@@ -46,26 +59,40 @@
 
 ---
 
-{... continue for all phases ...}
+### Phase 3: {Name}
+
+**Goal:** {goal}
+
+**Requirements covered:**
+- {REQ-ID}: {description}
+
+**Success criteria:**
+1. {criterion}
+
+**Depends on:** Phase 2
+
+---
 
 ## Coverage Verification
 
-All v1 requirements must map to exactly one phase. Unmapped requirements = roadmap gap.
+Every requirement in this milestone must map to exactly one phase.
 
 | Requirement | Phase | Covered? |
 |-------------|-------|----------|
 | {REQ-ID} | Phase {N} | ✓ |
 
-**Coverage:** {X}/{Y} v1 requirements mapped ({100% expected})
+---
+
+## When This Milestone Closes
+
+Triggered by `/qualia-milestone` after `/qualia-verify` passes on the last phase:
+
+1. All phase artifacts are archived to `.planning/archive/milestone-{N}-{slug}/`
+2. `tracking.json` `milestones[]` gets a summary entry (num, name, phases_completed, shipped_url, closed_at)
+3. REQUIREMENTS.md marks this milestone's requirements as **Complete**
+4. Next milestone from JOURNEY.md opens — roadmapper regenerates this ROADMAP.md for Milestone {N+1}
+5. `state.js init --force --milestone_name "{N+1 name}"` resets current-phase fields, preserves lifetime + milestones[] history
 
 ---
 
-## Rules
-
-1. **Feature phases only.** No "review" / "deploy" / "handoff" phases — those are driven by `/qualia-polish` → `/qualia-ship` → `/qualia-handoff` after all feature phases verify.
-2. **Each requirement maps to exactly one phase.** If a requirement spans phases, it's too big — split it.
-3. **Phases are independently verifiable.** A phase completes when its success criteria are observable in a running app.
-4. **Order by dependency, not priority.** Phase 2 should depend on Phase 1's outputs.
-
----
 *Last updated: {date}*
