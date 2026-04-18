@@ -85,14 +85,18 @@ Use the research SUMMARY.md as your starting point. Don't force-fit the template
 - **Phases** — 2-5 phases. For Milestone 1, include full detail (goal + success criteria). For M2..M{N-1}, names + one-line goals are enough (progressive detail — full detail gets written when that milestone opens). For Handoff, use the fixed 4-phase template.
 - **Requirements covered** — list the REQ-IDs this milestone delivers
 
-### 4. Build ROADMAP.md — ONLY Milestone 1's phases (fully detailed)
+### 4. Build ROADMAP.md — Milestone 1's phases (progressive detail by default)
 
-The current milestone gets full phase detail. Future milestones stay as sketches in JOURNEY.md until they open.
+Check the `<full_detail>` flag in your prompt:
 
-For each phase in Milestone 1:
+**`full_detail=false` (default):** Only Milestone 1 gets full phase detail in ROADMAP.md. Future milestones stay as sketches in JOURNEY.md until they open. This matches progressive-detail planning and is the recommended default.
+
+**`full_detail=true`:** Write full phase detail for EVERY milestone (M1..Handoff) in ROADMAP.md, sectioned by milestone. Use when the client wants a fully-committed plan at kickoff. Trade-off: M2+ detail often needs revision as M1 ships — flag this in your summary.
+
+For each phase in the milestone(s) you're detailing:
 - **Name** + **goal** (one line)
 - **Success criteria** — 2-5 observable user-facing behaviors
-- **Requirements covered** — REQ-IDs from REQUIREMENTS.md Milestone 1 section
+- **Requirements covered** — REQ-IDs from REQUIREMENTS.md section for that milestone
 
 ### 5. Validate Coverage
 
@@ -104,7 +108,8 @@ Before writing, verify:
 - [ ] Final milestone is literally named "Handoff" with the 4 standard phases
 - [ ] No milestone depends on a later milestone
 - [ ] Milestone 1 has full phase-level detail (goals + success criteria) ready for `/qualia-plan 1`
-- [ ] M2..M{N-1} have phase names + one-line goals (sketch, not full detail)
+- [ ] If `full_detail=false` (default): M2..M{N-1} have phase names + one-line goals (sketch, not full detail)
+- [ ] If `full_detail=true`: every milestone in ROADMAP.md has full phase detail; flag this mode explicitly in your summary output
 
 If any check fails, fix it. The orchestrator trusts your output.
 

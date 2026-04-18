@@ -194,6 +194,7 @@ function ensureLifetime(t) {
   if (typeof t.milestone !== "number") t.milestone = 1;
   if (typeof t.milestone_name !== "string") t.milestone_name = "";
   if (!Array.isArray(t.milestones)) t.milestones = [];
+  if (typeof t.report_seq !== "number") t.report_seq = 0;
   if (!t.lifetime || typeof t.lifetime !== "object") {
     t.lifetime = {
       tasks_completed: 0,
@@ -203,6 +204,26 @@ function ensureLifetime(t) {
     };
   }
   return t;
+}
+
+// Parse JOURNEY.md and extract the human name of the Nth milestone.
+// Matches headers like:
+//   ## Milestone 2 · Core Features
+//   ## Milestone 2 · Core Features     [CURRENT]
+//   ## Milestone 5 · Handoff           [FINAL]
+// Returns "" if JOURNEY.md is absent or the milestone isn't in it.
+function readNextMilestoneNameFromJourney(milestoneNum) {
+  try {
+    const journeyPath = path.join(PLANNING, "JOURNEY.md");
+    if (!fs.existsSync(journeyPath)) return "";
+    const content = fs.readFileSync(journeyPath, "utf8");
+    const re = new RegExp(`^##\\s+Milestone\\s+${milestoneNum}\\s*[·•-]\\s*([^\\n\\[]+)`, "m");
+    const m = content.match(re);
+    if (m && m[1]) return m[1].trim();
+    return "";
+  } catch {
+    return "";
+  }
 }
 
 function readState() {
@@ -1141,7 +1162,12 @@ function cmdCloseMilestone(opts) {
   t.lifetime.total_phases += (parseInt(t.total_phases) || 0);
   t.lifetime.last_closed_milestone = closedMilestone;
   t.milestone = closedMilestone + 1;
-  t.milestone_name = ""; // cleared; /qualia-milestone reads next one from JOURNEY.md
+  // Try to pre-populate next milestone's name from JOURNEY.md so the ERP
+  // tree view doesn't show a blank between close-milestone and the next
+  // state.js init --force (which happens in /qualia-milestone step 7).
+  // If JOURNEY.md is missing or unparseable, fall through with blank —
+  // /qualia-milestone will still set it via init --force.
+  t.milestone_name = readNextMilestoneNameFromJourney(t.milestone);
   t.last_updated = new Date().toISOString();
 
   writeTracking(t);
@@ -1238,6 +1264,27 @@ function cmdBackfillLifetime(opts) {
   });
 }
 
+// ─── Next Report ID ──────────────────────────────────────
+// Increments report_seq and returns the next QS-REPORT-NN id. Per-project
+// counter (lives in tracking.json). /qualia-report calls this to tag each
+// session report with a stable, human-readable client ID before POSTing
+// to the ERP. If --peek is passed, the next id is returned WITHOUT
+// incrementing — useful for --dry-run previews.
+function cmdNextReportId(opts) {
+  const t = readTracking();
+  if (!t) return output(fail("NO_PROJECT", "No .planning/ found."));
+  ensureLifetime(t);
+  const peek = !!opts.peek;
+  const next = (parseInt(t.report_seq) || 0) + 1;
+  const id = `QS-REPORT-${String(next).padStart(2, "0")}`;
+  if (!peek) {
+    t.report_seq = next;
+    t.last_updated = new Date().toISOString();
+    writeTracking(t);
+  }
+  output({ ok: true, action: "next-report-id", report_id: id, report_seq: next, peeked: peek });
+}
+
 // ─── Output ──────────────────────────────────────────────
 function output(obj) {
   console.log(JSON.stringify(obj, null, 2));
@@ -1289,11 +1336,14 @@ try {
     case "backfill-lifetime":
       cmdBackfillLifetime(opts);
       break;
+    case "next-report-id":
+      cmdNextReportId(opts);
+      break;
     default:
       output(
         fail(
           "UNKNOWN_COMMAND",
-          `Usage: state.js <check|transition|init|fix|validate-plan|close-milestone|backfill-lifetime> [--options]`
+          `Usage: state.js <check|transition|init|fix|validate-plan|close-milestone|backfill-lifetime|next-report-id> [--options]`
         )
       );
   }

@@ -1288,6 +1288,104 @@ waves: 1
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  // ─── v4.0.4: next-report-id ────────────────────────────────
+  it("next-report-id returns QS-REPORT-01 on fresh project and increments", () => {
+    const tmpDir = makeProject();
+    try {
+      const r1 = spawnSync(process.execPath,
+        [path.join(BIN, "state.js"), "next-report-id"],
+        { encoding: "utf8", cwd: tmpDir, timeout: 5000, stdio: ["pipe", "pipe", "pipe"] });
+      assert.equal(r1.status, 0, `next-report-id failed: ${r1.stderr || r1.stdout}`);
+      const j1 = JSON.parse(r1.stdout);
+      assert.equal(j1.report_id, "QS-REPORT-01");
+      assert.equal(j1.report_seq, 1);
+      assert.equal(j1.peeked, false);
+
+      const r2 = spawnSync(process.execPath,
+        [path.join(BIN, "state.js"), "next-report-id"],
+        { encoding: "utf8", cwd: tmpDir, timeout: 5000, stdio: ["pipe", "pipe", "pipe"] });
+      const j2 = JSON.parse(r2.stdout);
+      assert.equal(j2.report_id, "QS-REPORT-02");
+      assert.equal(j2.report_seq, 2);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("next-report-id --peek does NOT increment the counter", () => {
+    const tmpDir = makeProject();
+    try {
+      const r1 = spawnSync(process.execPath,
+        [path.join(BIN, "state.js"), "next-report-id", "--peek"],
+        { encoding: "utf8", cwd: tmpDir, timeout: 5000, stdio: ["pipe", "pipe", "pipe"] });
+      const j1 = JSON.parse(r1.stdout);
+      assert.equal(j1.report_id, "QS-REPORT-01");
+      assert.equal(j1.peeked, true);
+
+      // Peek again — should still return QS-REPORT-01 since nothing incremented
+      const r2 = spawnSync(process.execPath,
+        [path.join(BIN, "state.js"), "next-report-id", "--peek"],
+        { encoding: "utf8", cwd: tmpDir, timeout: 5000, stdio: ["pipe", "pipe", "pipe"] });
+      const j2 = JSON.parse(r2.stdout);
+      assert.equal(j2.report_id, "QS-REPORT-01");
+      assert.equal(j2.report_seq, 1);
+
+      // On-disk report_seq should still be 0
+      const t = JSON.parse(fs.readFileSync(path.join(tmpDir, ".planning", "tracking.json"), "utf8"));
+      assert.ok(!t.report_seq || t.report_seq === 0,
+        `report_seq should remain 0 after peek, got ${t.report_seq}`);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  // ─── v4.0.4: close-milestone pre-populates next milestone_name from JOURNEY.md
+  it("close-milestone pre-populates next milestone_name from JOURNEY.md", () => {
+    const tmpDir = makeProject();
+    try {
+      // Write JOURNEY.md with Milestone 2 definition
+      fs.writeFileSync(path.join(tmpDir, ".planning", "JOURNEY.md"), `# Journey
+
+## Milestone 1 · Foundation     [CURRENT]
+Exit: scaffolding done
+
+## Milestone 2 · Core Features
+Exit: auth + dashboard
+
+## Milestone 3 · Handoff     [FINAL]
+Exit: client takeover
+`);
+      const r = spawnSync(process.execPath,
+        [path.join(BIN, "state.js"), "close-milestone", "--force"],
+        { encoding: "utf8", cwd: tmpDir, timeout: 5000, stdio: ["pipe", "pipe", "pipe"] });
+      assert.equal(r.status, 0, `close-milestone failed: ${r.stderr || r.stdout}`);
+
+      const t = JSON.parse(fs.readFileSync(path.join(tmpDir, ".planning", "tracking.json"), "utf8"));
+      assert.equal(t.milestone, 2);
+      assert.equal(t.milestone_name, "Core Features",
+        `milestone_name should be pre-populated from JOURNEY.md, got '${t.milestone_name}'`);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("close-milestone leaves milestone_name blank when JOURNEY.md is missing", () => {
+    const tmpDir = makeProject();
+    try {
+      // No JOURNEY.md — milestone_name should fall back to blank (legacy behavior)
+      const r = spawnSync(process.execPath,
+        [path.join(BIN, "state.js"), "close-milestone", "--force"],
+        { encoding: "utf8", cwd: tmpDir, timeout: 5000, stdio: ["pipe", "pipe", "pipe"] });
+      assert.equal(r.status, 0);
+
+      const t = JSON.parse(fs.readFileSync(path.join(tmpDir, ".planning", "tracking.json"), "utf8"));
+      assert.equal(t.milestone_name, "",
+        "milestone_name must be blank when JOURNEY.md is absent (fallback unchanged)");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 // ═══════════════════════════════════════════════════════════

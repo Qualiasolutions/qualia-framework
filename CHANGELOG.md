@@ -8,6 +8,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Note: git tags for historical versions were not retained; commit references are approximate
 > and dates reflect commit history rather than npm publish timestamps.
 
+## [4.0.4] — 2026-04-18
+
+**Audit follow-up + ERP integration upgrade.** Eight concrete improvements
+from the framework deep-dive audit. Tests: 164 → 168 (+4 regression tests,
+covering the new `next-report-id` subcommand and the JOURNEY.md
+pre-populate on `close-milestone`).
+
+### Added
+
+- **`qualia-framework erp-ping`** — new CLI subcommand that POSTs a
+  synthetic `dry_run: true` payload to the ERP and prints HTTP code,
+  response body, and the ERP-returned `report_id`. Single-command
+  connectivity + key-validity + endpoint health check. Aliased as `ping`.
+- **`QS-REPORT-NN` client-side identifiers** — every session report
+  now carries a stable, sequential client ID (`QS-REPORT-01`, `-02`, …
+  per project) stored in `tracking.json.report_seq` and sent to the ERP
+  in a new `client_report_id` field. Survives retries, survives UUID
+  changes on the ERP side, is the preferred dedupe key going forward.
+- **`state.js next-report-id [--peek]`** — new mutator subcommand that
+  increments `report_seq` and returns the next `QS-REPORT-NN`. `--peek`
+  returns without incrementing (for `/qualia-report --dry-run`).
+- **`/qualia-report --dry-run`** — assemble + print the payload but
+  skip the POST, skip the git commit, and peek the sequence counter
+  without consuming one. Useful for previewing before a real clock-out.
+- **`/qualia-report` now retries with backoff** — 3 attempts at 1s, 3s,
+  9s on transient failures (timeout, 5xx, network). 401/422 are
+  permanent failures and fail fast. Local report commit is unchanged —
+  no data loss on upload failure, just a stale ERP view until retry.
+- **`/qualia-report` now displays both IDs on success** — "Uploaded as
+  QS-REPORT-03 (ERP: {uuid})". Employees and the ERP share the same
+  stable reference.
+- **`/qualia-new --full-detail`** — new flag that instructs the
+  roadmapper to write full phase-level detail for EVERY milestone
+  upfront (not just M1). Default behavior (progressive detail)
+  unchanged. `agents/roadmapper.md` honors `<full_detail>` in its
+  prompt contract.
+- **Visible progressive-detail notice** — after journey approval,
+  `/qualia-new` now explicitly tells the user "Milestone 1 is fully
+  planned. M2..M{N-1} are sketched. Full detail fills in when
+  /qualia-milestone opens each one." Previously only in template
+  comments — easy for a new team member to miss.
+
+### Fixed
+
+- `bin/state.js` `close-milestone` now reads `.planning/JOURNEY.md` to
+  pre-populate `tracking.json.milestone_name` with the next milestone's
+  name. Previously, between `close-milestone` and the next
+  `state.js init --force` from the roadmapper, `milestone_name` sat
+  blank — the ERP tree view would briefly show an unnamed milestone.
+  Falls back to blank if JOURNEY.md is missing (legacy projects, pre-v4).
+- `bin/cli.js` — `QUALIA_AGENT_FILES` expanded from 4 to all 8 agents
+  (`planner`, `builder`, `verifier`, `qa-browser`, **`plan-checker`**,
+  **`researcher`**, **`research-synthesizer`**, **`roadmapper`**).
+  `qualia-framework uninstall` would previously leave the last 4 on
+  disk as orphans.
+- `bin/cli.js` `cmdMigrate` — removed `block-env-edit.js` from
+  `requiredEditHooks`. That hook was deleted in v3.2.0 and
+  `install.js` actively purges it; `migrate` was trying to wire a
+  non-existent file into `settings.json`.
+- `bin/install.js` + `bin/cli.js` — unpinned
+  `next-devtools-mcp@0.3.10` → `@latest`. The pin was silent drift.
+- `bin/install.js` — warn (instead of OK) when an existing
+  `~/.claude/.erp-api-key` is under 10 bytes. Clearly truncated or
+  placeholder keys no longer silently pass install. Real bearer tokens
+  are ≥ 20 bytes; the threshold is deliberately loose to avoid false
+  positives.
+
+### Changed
+
+- `templates/tracking.json` — new field `report_seq: 0`.
+- `docs/erp-contract.md` — documented `client_report_id` (recommended)
+  and `dry_run` (optional) on the POST payload.
+
+### Tests
+
+- 164 → 168 (+4). New coverage: `next-report-id` increments,
+  `next-report-id --peek` is side-effect-free, `close-milestone`
+  pre-populates `milestone_name` from JOURNEY.md, and the fallback
+  path when JOURNEY.md is absent.
+
 ## [4.0.3] — 2026-04-18
 
 **Zero-deferral release.** Closes the last two items that were previously

@@ -38,6 +38,7 @@ Content-Type: application/json
   "team_id": "qualia-solutions",
   "git_remote": "github.com/QualiasolutionsCY/acme-portal",
   "client": "Client Name",
+  "client_report_id": "QS-REPORT-03",
   "milestone": 2,
   "milestone_name": "Core Product",
   "milestones": [
@@ -195,6 +196,8 @@ Authorization: Bearer <api-key>
 | last_pushed_at | string | optional (v3.6+) | ISO 8601 — distinct from `last_updated` (which fires on local writes too). |
 | build_count | number | optional (v3.6+) | Lifetime build counter. |
 | deploy_count | number | optional (v3.6+) | Lifetime deploy counter. |
+| client_report_id | string | recommended (v4.0.4+) | Client-side sequential identifier: `QS-REPORT-01`, `QS-REPORT-02`, … per-project. Stable across retries. Preferred dedupe key over the ERP-generated `report_id`; safe to adopt as the ERP's primary report key. |
+| dry_run | boolean | optional (v4.0.4+) | `true` marks a synthetic ping (from `qualia-framework erp-ping`). Receivers should filter these out of production report views. |
 
 All other fields are optional but recommended for complete reporting.
 

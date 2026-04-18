@@ -12,6 +12,11 @@ allowed-tools:
 
 Generate a concise report of what was done. Committed to git and uploaded to the ERP for clock-out.
 
+## Flags
+
+- `/qualia-report` — normal flow (generate, commit, push, upload to ERP)
+- `/qualia-report --dry-run` — generate + show payload, SKIP upload and SKIP commit. Useful for debugging or previewing before a real clock-out.
+
 ## Process
 
 ```bash
@@ -69,16 +74,33 @@ None. / - {blocker}
 {list from git log}
 ```
 
-### 4. Commit and Push
+### 4. Obtain Client Report ID (QS-REPORT-NN)
+
+Each session report gets a stable, sequential client-side identifier that travels with the report all the way to the ERP. The sequence is per-project, persisted in `tracking.json.report_seq`.
 
 ```bash
-mkdir -p .planning/reports
-git add .planning/reports/report-{date}.md
-git commit -m "report: session {YYYY-MM-DD}"
-git push
+# --dry-run: peek without incrementing
+if [ "$DRY_RUN" = "true" ]; then
+  CLIENT_REPORT_ID=$(node ~/.claude/bin/state.js next-report-id --peek 2>/dev/null | node -e "process.stdout.write(JSON.parse(require('fs').readFileSync(0,'utf8')).report_id||'')")
+else
+  CLIENT_REPORT_ID=$(node ~/.claude/bin/state.js next-report-id 2>/dev/null | node -e "process.stdout.write(JSON.parse(require('fs').readFileSync(0,'utf8')).report_id||'')")
+fi
 ```
 
-### 5. Upload to ERP (if enabled)
+Example: first report on a fresh project → `QS-REPORT-01`. Next → `QS-REPORT-02`. Etc.
+
+### 5. Commit and Push (SKIP on --dry-run)
+
+```bash
+if [ "$DRY_RUN" != "true" ]; then
+  mkdir -p .planning/reports
+  git add .planning/reports/report-{date}.md .planning/tracking.json
+  git commit -m "report: {CLIENT_REPORT_ID} session {YYYY-MM-DD}"
+  git push
+fi
+```
+
+### 6. Upload to ERP (SKIP on --dry-run)
 
 Read `~/.claude/.qualia-config.json` and check the `erp` object:
 - If `erp.enabled` is `false`, skip this step and print: "ERP upload skipped (disabled in config)."
@@ -94,67 +116,126 @@ REPORT_FILE=".planning/reports/report-{date}.md"
 SUBMITTED_BY=$(git config user.name)
 SUBMITTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-# Only upload if ERP is enabled
-if [ "$ERP_ENABLED" = "true" ]; then
-  # Build structured JSON payload from tracking.json (matches ERP contract /api/v1/reports)
-  # v4: include milestone_name, milestones[], team_id, project_id, git_remote,
-  # session_started_at, last_pushed_at, build_count, deploy_count — the ERP
-  # uses these to render the project tree (milestone → phases → unphased) correctly.
-  PAYLOAD=$(node -e "
-    const fs = require('fs');
-    const t = JSON.parse(fs.readFileSync('.planning/tracking.json', 'utf8'));
-    const notes = fs.readFileSync('$REPORT_FILE', 'utf8').substring(0, 60000);
-    const commits = [];
-    try {
-      const { spawnSync } = require('child_process');
-      const r = spawnSync('git', ['log', '--oneline', '--since=8 hours ago', '--format=%h'], { encoding: 'utf8', timeout: 3000 });
-      if (r.stdout) commits.push(...r.stdout.trim().split('\n').filter(Boolean));
-    } catch {}
-    console.log(JSON.stringify({
-      project: t.project || require('path').basename(process.cwd()),
-      project_id: t.project_id || '',
-      team_id: t.team_id || '',
-      git_remote: t.git_remote || '',
-      client: t.client || '',
-      milestone: t.milestone || 1,
-      milestone_name: t.milestone_name || '',
-      milestones: Array.isArray(t.milestones) ? t.milestones : [],
-      phase: t.phase,
-      phase_name: t.phase_name,
-      total_phases: t.total_phases,
-      status: t.status,
-      tasks_done: t.tasks_done || 0,
-      tasks_total: t.tasks_total || 0,
-      verification: t.verification || 'pending',
-      gap_cycles: (t.gap_cycles || {})[String(t.phase)] || 0,
-      build_count: t.build_count || 0,
-      deploy_count: t.deploy_count || 0,
-      deployed_url: t.deployed_url || '',
-      session_started_at: t.session_started_at || '',
-      last_pushed_at: t.last_pushed_at || '',
-      lifetime: t.lifetime || {},
-      commits: commits,
-      notes: notes,
-      submitted_by: '$SUBMITTED_BY',
-      submitted_at: '$SUBMITTED_AT'
-    }));
-  ")
+# Build structured JSON payload from tracking.json (matches ERP contract /api/v1/reports)
+# v4: include milestone_name, milestones[], team_id, project_id, git_remote,
+# session_started_at, last_pushed_at, build_count, deploy_count — the ERP
+# uses these to render the project tree (milestone → phases → unphased) correctly.
+# v4.0.4: client_report_id carries the QS-REPORT-NN identifier.
+PAYLOAD=$(node -e "
+  const fs = require('fs');
+  const t = JSON.parse(fs.readFileSync('.planning/tracking.json', 'utf8'));
+  const notes = fs.readFileSync('$REPORT_FILE', 'utf8').substring(0, 60000);
+  const commits = [];
+  try {
+    const { spawnSync } = require('child_process');
+    const r = spawnSync('git', ['log', '--oneline', '--since=8 hours ago', '--format=%h'], { encoding: 'utf8', timeout: 3000 });
+    if (r.stdout) commits.push(...r.stdout.trim().split('\n').filter(Boolean));
+  } catch {}
+  console.log(JSON.stringify({
+    project: t.project || require('path').basename(process.cwd()),
+    project_id: t.project_id || '',
+    team_id: t.team_id || '',
+    git_remote: t.git_remote || '',
+    client: t.client || '',
+    client_report_id: '$CLIENT_REPORT_ID',
+    milestone: t.milestone || 1,
+    milestone_name: t.milestone_name || '',
+    milestones: Array.isArray(t.milestones) ? t.milestones : [],
+    phase: t.phase,
+    phase_name: t.phase_name,
+    total_phases: t.total_phases,
+    status: t.status,
+    tasks_done: t.tasks_done || 0,
+    tasks_total: t.tasks_total || 0,
+    verification: t.verification || 'pending',
+    gap_cycles: (t.gap_cycles || {})[String(t.phase)] || 0,
+    build_count: t.build_count || 0,
+    deploy_count: t.deploy_count || 0,
+    deployed_url: t.deployed_url || '',
+    session_started_at: t.session_started_at || '',
+    last_pushed_at: t.last_pushed_at || '',
+    lifetime: t.lifetime || {},
+    commits: commits,
+    notes: notes,
+    submitted_by: '$SUBMITTED_BY',
+    submitted_at: '$SUBMITTED_AT'
+  }));
+")
 
-  curl -s -X POST "$ERP_URL/api/v1/reports" \
-    -H "Authorization: Bearer $API_KEY" \
-    -H "Content-Type: application/json" \
-    -d "$PAYLOAD"
+# --dry-run: print payload and stop (no POST, no commit, no increment already handled in step 4)
+if [ "$DRY_RUN" = "true" ]; then
+  echo "--- DRY RUN · payload ---"
+  echo "$PAYLOAD" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8'));console.log(JSON.stringify(d,null,2))"
+  echo "--- DRY RUN · would POST to: $ERP_URL/api/v1/reports ---"
+  echo "--- DRY RUN · client_report_id would be: $CLIENT_REPORT_ID ---"
+  exit 0
+fi
+
+# Real upload — 3 attempts with exponential backoff (1s, 3s, 9s).
+# The local report file is already committed, so a failed upload doesn't
+# lose data — it just leaves the ERP view stale until the next push or
+# manual retry.
+if [ "$ERP_ENABLED" = "true" ]; then
+  MAX_ATTEMPTS=3
+  ATTEMPT=1
+  SUCCESS=false
+  while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+    RESPONSE=$(curl -sS -X POST "$ERP_URL/api/v1/reports" \
+      -H "Authorization: Bearer $API_KEY" \
+      -H "Content-Type: application/json" \
+      -d "$PAYLOAD" \
+      --max-time 10 \
+      -w "\n__HTTP__%{http_code}" 2>&1)
+    HTTP_CODE=$(echo "$RESPONSE" | grep -o "__HTTP__[0-9]*" | sed 's/__HTTP__//')
+    BODY=$(echo "$RESPONSE" | sed 's/__HTTP__[0-9]*//g')
+
+    if [ "$HTTP_CODE" = "200" ]; then
+      SUCCESS=true
+      # Parse and display the ERP-returned report_id alongside our local QS-REPORT-NN
+      ERP_REPORT_ID=$(echo "$BODY" | node -e "try{const d=JSON.parse(require('fs').readFileSync(0,'utf8'));process.stdout.write(d.report_id||'')}catch{}")
+      node ~/.claude/bin/qualia-ui.js ok "Uploaded as $CLIENT_REPORT_ID (ERP: ${ERP_REPORT_ID:-none})"
+      break
+    fi
+
+    # 401 / 422 are permanent failures — no retry.
+    if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "422" ]; then
+      node ~/.claude/bin/qualia-ui.js warn "ERP rejected report (HTTP $HTTP_CODE). Ask Fawzi."
+      echo "$BODY" | head -3
+      break
+    fi
+
+    # Transient failure — back off and retry.
+    if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+      SLEEP=$(( 1 * 3 ** (ATTEMPT - 1) ))
+      node ~/.claude/bin/qualia-ui.js warn "ERP upload attempt $ATTEMPT failed (HTTP ${HTTP_CODE:-timeout}), retrying in ${SLEEP}s..."
+      sleep $SLEEP
+    fi
+    ATTEMPT=$(( ATTEMPT + 1 ))
+  done
+
+  if [ "$SUCCESS" != "true" ]; then
+    node ~/.claude/bin/qualia-ui.js warn "ERP upload failed after $MAX_ATTEMPTS attempts. $CLIENT_REPORT_ID is committed locally; it will NOT appear in the ERP until you retry with 'curl' or re-run /qualia-report."
+  fi
+fi
+
+if [ "$ERP_ENABLED" != "true" ]; then
+  node ~/.claude/bin/qualia-ui.js info "ERP upload skipped (disabled in config). Report committed locally as $CLIENT_REPORT_ID."
 fi
 ```
 
-If the upload succeeds, print: "Report uploaded to ERP. You can now clock out."
-If it fails (no API key, network error), print the error and tell the employee to ask Fawzi.
-If ERP is disabled, print: "ERP upload skipped (disabled in config)."
+Summary rules:
+- **Upload succeeds:** print "Uploaded as QS-REPORT-NN (ERP: {uuid})". Employee can clock out.
+- **401/422:** no retry. Print the error, tell the employee to ask Fawzi.
+- **Transient (timeout, 5xx, network):** retry 3x with 1s/3s/9s backoff.
+- **All retries fail:** tell employee the report is committed locally, ERP will be stale until retry.
+- **ERP disabled:** skip silently with a note, local commit still happens.
 
-### 6. Update State
+### 7. Update State (SKIP on --dry-run)
 
 ```bash
-node ~/.claude/bin/state.js transition --to activity --notes "Session report generated"
+if [ "$DRY_RUN" != "true" ]; then
+  node ~/.claude/bin/state.js transition --to activity --notes "Session report $CLIENT_REPORT_ID generated"
+fi
 ```
 
 Do NOT manually edit STATE.md or tracking.json — state.js handles both.

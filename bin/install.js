@@ -517,7 +517,18 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
     ok(".erp-api-key (from $QUALIA_ERP_KEY)");
   } else if (fs.existsSync(erpKeyFile)) {
     try { fs.chmodSync(erpKeyFile, 0o600); } catch {}
-    ok(".erp-api-key (existing — preserved)");
+    // Sanity check: warn on a clearly-empty/placeholder key. Genuine tokens
+    // from the ERP are ≥ 20 bytes; under 10 is almost certainly a mistake.
+    try {
+      const existingKey = fs.readFileSync(erpKeyFile, "utf8").trim();
+      if (existingKey.length < 10) {
+        warn(`.erp-api-key exists but looks truncated (${existingKey.length} bytes) — verify with 'qualia-framework erp-ping'`);
+      } else {
+        ok(".erp-api-key (existing — preserved)");
+      }
+    } catch {
+      ok(".erp-api-key (existing — preserved)");
+    }
   } else {
     // Disable ERP in the config we just wrote.
     try {
@@ -673,7 +684,7 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
   if (!settings.mcpServers["next-devtools"]) {
     settings.mcpServers["next-devtools"] = {
       command: "npx",
-      args: ["next-devtools-mcp@0.3.10"],
+      args: ["next-devtools-mcp@latest"],
       disabled: false,
     };
     ok("MCP: next-devtools (runtime error visibility for Next.js projects)");

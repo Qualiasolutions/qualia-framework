@@ -144,8 +144,17 @@ const QUALIA_LEGACY_HOOK_FILES = [
   "block-env-edit.js", // removed in v3.2.0
 ];
 
-// 4 Qualia agents — only these are removed.
-const QUALIA_AGENT_FILES = ["planner.md", "builder.md", "verifier.md", "qa-browser.md"];
+// 8 Qualia agents — only these are removed.
+const QUALIA_AGENT_FILES = [
+  "planner.md",
+  "builder.md",
+  "verifier.md",
+  "qa-browser.md",
+  "plan-checker.md",
+  "researcher.md",
+  "research-synthesizer.md",
+  "roadmapper.md",
+];
 
 // 3 Qualia bin scripts.
 const QUALIA_BIN_FILES = ["state.js", "qualia-ui.js", "statusline.js"];
@@ -557,7 +566,7 @@ function cmdMigrate() {
 
   // Check PreToolUse hooks — ensure all critical hooks are present
   const requiredBashHooks = ["auto-update.js", "branch-guard.js", "pre-push.js", "pre-deploy-gate.js"];
-  const requiredEditHooks = ["block-env-edit.js", "migration-guard.js"];
+  const requiredEditHooks = ["migration-guard.js"];
 
   if (!settings.hooks.PreToolUse) settings.hooks.PreToolUse = [];
 
@@ -649,7 +658,7 @@ function cmdMigrate() {
   if (!settings.mcpServers["next-devtools"]) {
     settings.mcpServers["next-devtools"] = {
       command: "npx",
-      args: ["next-devtools-mcp@0.3.10"],
+      args: ["next-devtools-mcp@latest"],
       disabled: false,
     };
     changes++;
@@ -760,6 +769,109 @@ function cmdAnalytics() {
   console.log("");
 }
 
+// ─── ERP Ping ───────────────────────────────────────────
+// Synthetic POST to ERP /api/v1/reports to verify connectivity, auth key
+// validity, and endpoint health. Uses a distinct dry_run=true flag in the
+// payload so receivers can filter these out of real report views.
+
+function cmdErpPing() {
+  banner();
+  console.log("");
+
+  const cfg = readConfig();
+  const erpUrl = (cfg.erp && cfg.erp.url) || "https://portal.qualiasolutions.net";
+  const erpEnabled = !(cfg.erp && cfg.erp.enabled === false);
+  const keyFile = path.join(CLAUDE_DIR, ".erp-api-key");
+
+  console.log(`  ${DIM}URL:${RESET}       ${WHITE}${erpUrl}${RESET}`);
+  console.log(`  ${DIM}Enabled:${RESET}   ${erpEnabled ? `${GREEN}yes${RESET}` : `${YELLOW}no (erp.enabled=false)${RESET}`}`);
+
+  let apiKey = "";
+  try {
+    apiKey = fs.readFileSync(keyFile, "utf8").trim();
+  } catch {}
+  if (!apiKey) {
+    console.log(`  ${DIM}Key:${RESET}       ${RED}missing${RESET} ${DIM}(${keyFile})${RESET}`);
+    console.log("");
+    console.log(`  ${RED}✗ Cannot ping — no API key. Ask Fawzi for one.${RESET}`);
+    console.log("");
+    process.exit(1);
+  }
+  console.log(`  ${DIM}Key:${RESET}       ${GREEN}present${RESET} ${DIM}(${apiKey.length} bytes)${RESET}`);
+  console.log("");
+
+  if (!erpEnabled) {
+    console.log(`  ${YELLOW}ERP is disabled in config. Enable with:${RESET}`);
+    console.log(`  ${DIM}  qualia-framework erp-ping --enable${RESET}`);
+    console.log("");
+    process.exit(1);
+  }
+
+  const payload = JSON.stringify({
+    project: "qualia-framework-erp-ping",
+    project_id: "ping",
+    team_id: "qualia-solutions",
+    client_report_id: "QS-PING-00",
+    phase: 0,
+    phase_name: "ping",
+    status: "setup",
+    milestone: 0,
+    milestone_name: "ping",
+    submitted_by: cfg.installed_by || "ping",
+    submitted_at: new Date().toISOString(),
+    notes: "ERP PING — synthetic connectivity test, safe to ignore",
+    dry_run: true,
+  });
+
+  const started = Date.now();
+  const r = spawnSync("curl", [
+    "-sS", "-X", "POST",
+    "-H", `Authorization: Bearer ${apiKey}`,
+    "-H", "Content-Type: application/json",
+    "-d", payload,
+    "--max-time", "10",
+    "-w", "\n__HTTP__%{http_code}",
+    `${erpUrl}/api/v1/reports`,
+  ], { encoding: "utf8", timeout: 12000 });
+
+  const duration = Date.now() - started;
+  const raw = (r.stdout || "") + (r.stderr || "");
+  const httpMatch = raw.match(/__HTTP__(\d+)/);
+  const httpCode = httpMatch ? httpMatch[1] : "—";
+  const body = raw.replace(/\n?__HTTP__\d+/, "").trim();
+
+  console.log(`  ${DIM}Response:${RESET}  ${WHITE}HTTP ${httpCode}${RESET} ${DIM}(${duration}ms)${RESET}`);
+  if (body) {
+    try {
+      const j = JSON.parse(body);
+      if (j.ok && j.report_id) {
+        console.log(`  ${DIM}report_id:${RESET} ${GREEN}${j.report_id}${RESET}`);
+      }
+      if (!j.ok && j.error) {
+        console.log(`  ${DIM}error:${RESET}     ${RED}${j.error}${RESET} ${DIM}${j.message || ""}${RESET}`);
+      }
+    } catch {
+      console.log(`  ${DIM}body:${RESET}      ${WHITE}${body.slice(0, 200)}${RESET}`);
+    }
+  }
+  console.log("");
+
+  if (httpCode === "200") {
+    console.log(`  ${GREEN}✓ ERP reachable, key valid, endpoint healthy.${RESET}`);
+    console.log("");
+    process.exit(0);
+  }
+  if (httpCode === "401") {
+    console.log(`  ${RED}✗ API key rejected. Ask Fawzi for a fresh key.${RESET}`);
+  } else if (httpCode === "—") {
+    console.log(`  ${RED}✗ No response — DNS, TLS, or network issue.${RESET}`);
+  } else {
+    console.log(`  ${YELLOW}! Unexpected response. Check ERP status.${RESET}`);
+  }
+  console.log("");
+  process.exit(1);
+}
+
 function cmdHelp() {
   banner();
   console.log("");
@@ -772,6 +884,7 @@ function cmdHelp() {
   console.log(`    qualia-framework ${TEAL}team${RESET}         Manage team members (${DIM}list|add|remove${RESET})`);
   console.log(`    qualia-framework ${TEAL}traces${RESET}       View recent hook telemetry`);
   console.log(`    qualia-framework ${TEAL}analytics${RESET}    Show outcome scoring & gap cycle stats`);
+  console.log(`    qualia-framework ${TEAL}erp-ping${RESET}     Verify ERP connectivity + API key`);
   console.log("");
   console.log(`  ${WHITE}After install:${RESET}`);
   console.log(`    ${TG}/qualia${RESET}          What should I do next?`);
@@ -823,6 +936,10 @@ switch (cmd) {
   case "analytics":
   case "stats":
     cmdAnalytics();
+    break;
+  case "erp-ping":
+  case "ping":
+    cmdErpPing();
     break;
   default:
     cmdHelp();

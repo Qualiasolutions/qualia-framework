@@ -21,8 +21,9 @@ Initialize a project with the **entire arc mapped from kickoff to handoff**. All
 
 ## Flags
 
-- `/qualia-new` — full-journey flow, stops after approval (default, backward-compatible)
+- `/qualia-new` — full-journey flow, stops after approval (default, backward-compatible). **Progressive detail**: Milestone 1 gets full phase detail; M2..M{N-1} get sketched (names + one-line goals). Full detail for later milestones is filled in by `/qualia-milestone` when each one opens. This matches how real projects unfold — M1's discoveries reshape M3's plan, so deep-planning M3 now tends to waste effort.
 - `/qualia-new --auto` — full-journey flow, then auto-chains into `/qualia-plan 1 → /qualia-build → /qualia-verify` for Milestone 1
+- `/qualia-new --full-detail` — ALL milestones get full phase-level detail upfront (success criteria per phase for every milestone, not just M1). Use when the client wants a fully-committed plan at kickoff. Trade-off: later milestones often need revision as M1 ships. Combinable with `--auto`.
 - `/qualia-new --quick` — 4-phase flat wizard for trivial projects (landing pages, prototypes). Skips research and journey mapping.
 
 ## The Shift From Previous Versions
@@ -238,7 +239,7 @@ Gather any additional requirements the user wants that research missed.
 node ~/.claude/bin/qualia-ui.js banner roadmap
 ```
 
-Spawn the roadmapper with full-journey mandate:
+Spawn the roadmapper with full-journey mandate. If the user passed `--full-detail`, include `<full_detail>true</full_detail>` in the prompt so the roadmapper writes complete phase detail for ALL milestones.
 
 ```
 Agent(prompt="
@@ -248,13 +249,17 @@ Read your role: @~/.claude/agents/roadmapper.md
 Create the FULL JOURNEY for this project:
   - .planning/JOURNEY.md — all milestones (2-5 including Handoff) with exit criteria
   - .planning/REQUIREMENTS.md — requirements grouped by milestone
-  - .planning/ROADMAP.md — Milestone 1's phase detail only (ready for /qualia-plan 1)
+  - .planning/ROADMAP.md — Milestone 1's phase detail (and ALL milestones if full_detail=true)
 
 User-scoped v1 features:
 {list of features selected in Step 9, grouped by category}
 
 Template type: {template_type from config.json}
 If set, use ~/.claude/qualia-templates/projects/{type}.md as the milestone arc starting point.
+
+<full_detail>{true if --full-detail, else false}</full_detail>
+  - false (default): Milestone 1 gets full phase detail; M2..M{N-1} stay as sketches. Detail fills in when each milestone opens via /qualia-milestone.
+  - true: every milestone (M1..Handoff) gets full phase-level detail in ROADMAP.md upfront. Useful when the client wants a fully-committed plan at kickoff.
 
 The final milestone MUST be named 'Handoff' with the fixed 4 phases
 (Polish, Content + SEO, Final QA, Handoff). Do not omit it.
@@ -330,6 +335,16 @@ when they open. Milestone {N} (Handoff) uses the standard 4-phase template.
 git add .planning/JOURNEY.md .planning/REQUIREMENTS.md .planning/ROADMAP.md .planning/STATE.md
 git commit -m "docs: journey + requirements + milestone 1 roadmap ({N} milestones)"
 ```
+
+**After approval, show the progressive-detail reminder explicitly:**
+
+```bash
+node ~/.claude/bin/qualia-ui.js info "Milestone 1 is fully planned now."
+node ~/.claude/bin/qualia-ui.js info "Milestones 2..{N-1} are sketched (names + one-line goals)."
+node ~/.claude/bin/qualia-ui.js info "Full phase detail for each later milestone gets written when /qualia-milestone opens it."
+```
+
+(Skip this block when `--full-detail` was used — all milestones are already fully planned in that case.)
 
 ### Step 13. Environment Setup
 
