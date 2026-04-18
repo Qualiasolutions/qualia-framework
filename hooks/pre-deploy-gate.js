@@ -2,8 +2,7 @@
 // ~/.claude/hooks/pre-deploy-gate.js — quality gates before production deploy.
 // PreToolUse hook on `vercel --prod*` commands. Runs tsc, lint, tests, build,
 // then scans for service_role leaks in client code.
-// Exits 1 to BLOCK deploy (preserved for test compatibility; Claude Code's hook
-// protocol formally uses exit 2, but the framework's existing tests assert on 1).
+// Exits 2 to BLOCK deploy (Claude Code PreToolUse hook contract).
 // Exits 0 to allow.
 // Cross-platform (Windows/macOS/Linux). No `grep` or `find` — pure Node.
 
@@ -43,7 +42,7 @@ function runGate(label, cmd, args, { required = true } = {}) {
   if (required) {
     console.error(`BLOCKED: ${label} errors. Fix before deploying.`);
     _trace("pre-deploy-gate", "block", { gate: label });
-    process.exit(1);
+    process.exit(2);
   }
   return false;
 }
@@ -180,7 +179,7 @@ if (leaks.length > 0) {
     console.error(`  ✗ ${f}`);
   }
   _trace("pre-deploy-gate", "block", { gate: "security", leaks: leaks.slice(0, 10) });
-  process.exit(1);
+  process.exit(2);
 }
 console.log("  ✓ Security");
 console.log("⬢ All gates passed.");

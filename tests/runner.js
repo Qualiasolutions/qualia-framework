@@ -1198,6 +1198,37 @@ waves: 1
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  // ─── v4 regression: deploy_count actually increments on shipped ───
+  it("transition --to shipped increments deploy_count", () => {
+    const tmpDir = makeProject();
+    try {
+      // Walk both phases through verified, then polished, then shipped.
+      makeValidPlan(tmpDir, 1);
+      runState(["transition", "--to", "planned"], tmpDir);
+      runState(["transition", "--to", "built", "--tasks-done", "1", "--tasks-total", "1"], tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".planning", "phase-1-verification.md"), "# pass\n");
+      runState(["transition", "--to", "verified", "--verification", "pass"], tmpDir);
+
+      makeValidPlan(tmpDir, 2);
+      runState(["transition", "--to", "planned"], tmpDir);
+      runState(["transition", "--to", "built", "--tasks-done", "1", "--tasks-total", "1"], tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".planning", "phase-2-verification.md"), "# pass\n");
+      runState(["transition", "--to", "verified", "--verification", "pass"], tmpDir);
+      runState(["transition", "--to", "polished"], tmpDir);
+
+      const before = JSON.parse(fs.readFileSync(path.join(tmpDir, ".planning", "tracking.json"), "utf8"));
+      assert.equal(parseInt(before.deploy_count) || 0, 0, "deploy_count starts at 0");
+
+      const r = runState(["transition", "--to", "shipped", "--deployed-url", "https://x.test"], tmpDir);
+      assert.equal(r.status, 0, `shipped transition failed: ${r.stdout} ${r.stderr}`);
+      const after = JSON.parse(fs.readFileSync(path.join(tmpDir, ".planning", "tracking.json"), "utf8"));
+      assert.equal(parseInt(after.deploy_count), 1, "deploy_count must increment to 1");
+      assert.equal(after.deployed_url, "https://x.test");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -1455,7 +1486,7 @@ describe("Hooks", () => {
       const r = spawnSync(process.execPath, [path.join(HOOKS, "pre-deploy-gate.js")], {
         encoding: "utf8", cwd: tmpDir, timeout: 10000, stdio: ["pipe", "pipe", "pipe"],
       });
-      assert.equal(r.status, 1);
+      assert.equal(r.status, 2, "PreToolUse hook must exit 2 to block");
       const combined = r.stdout + r.stderr;
       assert.match(combined, /BLOCKED/);
       assert.match(combined, /service_role/);
@@ -1472,7 +1503,7 @@ describe("Hooks", () => {
       const r = spawnSync(process.execPath, [path.join(HOOKS, "pre-deploy-gate.js")], {
         encoding: "utf8", cwd: tmpDir, timeout: 10000, stdio: ["pipe", "pipe", "pipe"],
       });
-      assert.equal(r.status, 1);
+      assert.equal(r.status, 2, "PreToolUse hook must exit 2 to block");
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -1607,7 +1638,7 @@ describe("Hooks", () => {
       const r = spawnSync(process.execPath, [path.join(HOOKS, "pre-deploy-gate.js")], {
         encoding: "utf8", cwd: tmpDir, timeout: 10000, stdio: ["pipe", "pipe", "pipe"],
       });
-      assert.equal(r.status, 1);
+      assert.equal(r.status, 2, "PreToolUse hook must exit 2 to block");
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -2230,6 +2261,63 @@ describe("qualia-ui.js", () => {
       assert.match(clean, /Fawzi Goussous/);
     } finally {
       fs.rmSync(tmpHome, { recursive: true, force: true });
+    }
+  });
+
+  // ─── v4 regression: journey-tree renders without crashing ───
+  // Previously crashed with "Cannot access 'projectName' before initialization"
+  // because a const shadowed the fallback function inside its own initializer.
+  it("journey-tree renders milestones without crashing", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "qualia-jt-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, ".planning"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpDir, ".planning", "JOURNEY.md"),
+        "# JOURNEY\n\n## Milestone 1 · Foundation\n\nWhy now.\n\n## Milestone 2 · Handoff\n\nDeliver.\n"
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, ".planning", "tracking.json"),
+        JSON.stringify({ project: "jtproj", milestone: 1, milestones: [] })
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, ".planning", "STATE.md"),
+        "---\nproject: jtproj\nphase: 1\nstatus: planning\nmilestone: 1\n---\n"
+      );
+      const r = runUI(["journey-tree"], { cwd: tmpDir, home: tmpDir });
+      assert.equal(r.status, 0, `journey-tree crashed: ${r.stderr}`);
+      const clean = stripAnsi(r.stdout);
+      assert.match(clean, /JOURNEY/);
+      assert.match(clean, /M1 · Foundation/);
+      assert.match(clean, /M2 · Handoff/);
+      assert.match(clean, /\[CURRENT\]/);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  // ─── v4 regression: journey-tree uses projectName() fallback when frontmatter missing ───
+  // Would previously throw ReferenceError because `const projectName` shadowed the
+  // function name inside its own initializer. Fallback resolves to basename(cwd).
+  it("journey-tree uses projectName() fallback when no project: in JOURNEY frontmatter", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "qualia-jt-fallback-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, ".planning"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpDir, ".planning", "JOURNEY.md"),
+        "# JOURNEY\n\n## Milestone 1 · Foundation\n\nWhy now.\n\n## Milestone 2 · Handoff\n\nLast.\n"
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, ".planning", "tracking.json"),
+        JSON.stringify({ project: "ignored-by-fallback", milestone: 1 })
+      );
+      const r = runUI(["journey-tree"], { cwd: tmpDir, home: tmpDir });
+      assert.equal(r.status, 0, `journey-tree crashed: ${r.stderr}`);
+      const clean = stripAnsi(r.stdout);
+      // Fallback is path.basename(cwd) — whatever the tmp dir is named.
+      assert.match(clean, new RegExp(path.basename(tmpDir)));
+      assert.match(clean, /M1 · Foundation/);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 });

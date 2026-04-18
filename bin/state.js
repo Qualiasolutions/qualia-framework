@@ -30,6 +30,20 @@ function atomicWrite(file, content) {
 // Prevents two concurrent state.js mutations from racing on the dual
 // STATE.md + tracking.json write. Read commands (check, validate-plan)
 // don't take the lock — only mutators do.
+
+// Synchronous sleep without CPU spin. Atomics.wait on a zero-initialized
+// SharedArrayBuffer blocks until the timeout elapses and yields the CPU.
+function sleepSync(ms) {
+  try {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  } catch {
+    // SharedArrayBuffer unavailable (extremely old runtimes) — last-resort
+    // tight loop, bounded to the requested duration.
+    const t = Date.now() + ms;
+    while (Date.now() < t) {}
+  }
+}
+
 function acquireLock(timeoutMs = 5000) {
   if (!fs.existsSync(PLANNING)) return null; // nothing to lock yet
   const start = Date.now();
@@ -50,12 +64,13 @@ function acquireLock(timeoutMs = 5000) {
           continue;
         }
       } catch {}
-      // Spin-wait briefly. State ops are fast; conflicts rare.
-      const t = Date.now() + 50;
-      while (Date.now() < t) {}
+      sleepSync(50);
     }
   }
-  // Couldn't acquire — proceed unlocked rather than block the user.
+  // Couldn't acquire inside the budget — proceed unlocked rather than
+  // hard-block the user. Surface this in analytics so repeated contention
+  // is visible instead of silent.
+  try { _trace("state-lock", "fallthrough", { waited_ms: Date.now() - start }); } catch {}
   return null;
 }
 
@@ -613,14 +628,21 @@ function cmdTransition(opts) {
     t.deploy_count = (parseInt(t.deploy_count) || 0) + 1;
   }
 
-  // Write both files
+  // Write both files. We back up STATE.md AND tracking.json so a failure in
+  // the second write can still roll back cleanly. The writes themselves stage
+  // to .tmp and rename (see atomicWrite) so each individual file is torn-write
+  // safe; the rename window between the two is narrow but non-zero.
   const backupState = readState();
+  const backupTracking = (() => {
+    try { return fs.readFileSync(TRACKING_FILE, "utf8"); } catch { return null; }
+  })();
   try {
     writeStateMd(s);
     writeTracking(t);
   } catch (e) {
-    // Revert STATE.md on failure (atomic so the revert itself is safe)
-    if (backupState) atomicWrite(STATE_FILE, backupState);
+    // Revert whichever file is out of sync with pre-transition state.
+    try { if (backupState) atomicWrite(STATE_FILE, backupState); } catch {}
+    try { if (backupTracking) atomicWrite(TRACKING_FILE, backupTracking); } catch {}
     return output(fail("WRITE_ERROR", e.message));
   }
 

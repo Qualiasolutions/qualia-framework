@@ -218,25 +218,25 @@ export default function P(){return null}
 EOF
 OUT=$(cd "$TMP" && $NODE "$HOOKS_DIR/pre-deploy-gate.js" 2>&1)
 RC=$?
-if [ "$RC" -eq 1 ] \
+if [ "$RC" -eq 2 ] \
    && echo "$OUT" | grep -q "BLOCKED" \
    && echo "$OUT" | grep -q "service_role"; then
-  echo "  ✓ service_role leak in app/ → blocked with diagnostic"
+  echo "  ✓ service_role leak in app/ → blocked with diagnostic (exit 2)"
   PASS=$((PASS + 1))
 else
-  echo "  ✗ service_role leak in app/ → blocked (exit=$RC)"
+  echo "  ✗ service_role leak in app/ → blocked (exit=$RC, expected 2)"
   FAIL=$((FAIL + 1))
 fi
 rm -rf "$TMP"
 
-# service_role leak in components/ → BLOCKED
+# service_role leak in components/ → BLOCKED (exit 2 per PreToolUse contract)
 TMP=$(mktemp -d)
 mkdir -p "$TMP/components"
 cat > "$TMP/components/Widget.tsx" <<'EOF'
 const key = "service_role_literal_leak";
 EOF
 (cd "$TMP" && $NODE "$HOOKS_DIR/pre-deploy-gate.js" >/dev/null 2>&1)
-assert_exit "service_role in components/ → blocked" 1 $?
+assert_exit "service_role in components/ → blocked (exit 2)" 2 $?
 rm -rf "$TMP"
 
 # service_role in a *.server.ts file → allowed (skip convention)

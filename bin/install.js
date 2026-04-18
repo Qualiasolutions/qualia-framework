@@ -599,16 +599,23 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
   // bash/Git Bash requirement on Windows.
   const hd = path.join(CLAUDE_DIR, "hooks");
   const nodeCmd = (hookFile) => `node "${path.join(hd, hookFile)}"`;
-  settings.hooks = {
+  const QUALIA_HOOK_SET = new Set([
+    "session-start.js", "auto-update.js", "branch-guard.js", "pre-push.js",
+    "pre-deploy-gate.js", "migration-guard.js", "pre-compact.js",
+  ]);
+  const isQualiaHookCmd = (cmd) => {
+    if (typeof cmd !== "string") return false;
+    for (const h of QUALIA_HOOK_SET) if (cmd.includes(h)) return true;
+    return false;
+  };
+
+  // Our canonical hook definitions, grouped per event/matcher.
+  const qualiaHooks = {
     SessionStart: [
       {
         matcher: ".*",
         hooks: [
-          {
-            type: "command",
-            command: nodeCmd("session-start.js"),
-            timeout: 5,
-          },
+          { type: "command", command: nodeCmd("session-start.js"), timeout: 5 },
         ],
       },
     ],
@@ -616,44 +623,16 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
       {
         matcher: "Bash",
         hooks: [
-          {
-            type: "command",
-            command: nodeCmd("auto-update.js"),
-            timeout: 5,
-          },
-          {
-            type: "command",
-            if: "Bash(git push*)",
-            command: nodeCmd("branch-guard.js"),
-            timeout: 5,
-            statusMessage: "⬢ Checking branch permissions...",
-          },
-          {
-            type: "command",
-            if: "Bash(git push*)",
-            command: nodeCmd("pre-push.js"),
-            timeout: 15,
-            statusMessage: "⬢ Syncing tracking...",
-          },
-          {
-            type: "command",
-            if: "Bash(vercel --prod*)",
-            command: nodeCmd("pre-deploy-gate.js"),
-            timeout: 180,
-            statusMessage: "⬢ Running quality gates...",
-          },
+          { type: "command", command: nodeCmd("auto-update.js"), timeout: 5 },
+          { type: "command", if: "Bash(git push*)", command: nodeCmd("branch-guard.js"), timeout: 5, statusMessage: "⬢ Checking branch permissions..." },
+          { type: "command", if: "Bash(git push*)", command: nodeCmd("pre-push.js"), timeout: 15, statusMessage: "⬢ Syncing tracking..." },
+          { type: "command", if: "Bash(vercel --prod*)", command: nodeCmd("pre-deploy-gate.js"), timeout: 180, statusMessage: "⬢ Running quality gates..." },
         ],
       },
       {
         matcher: "Edit|Write",
         hooks: [
-          {
-            type: "command",
-            if: "Edit(*migration*)|Write(*migration*)|Edit(*.sql)|Write(*.sql)",
-            command: nodeCmd("migration-guard.js"),
-            timeout: 10,
-            statusMessage: "⬢ Checking migration safety...",
-          },
+          { type: "command", if: "Edit(*migration*)|Write(*migration*)|Edit(*.sql)|Write(*.sql)", command: nodeCmd("migration-guard.js"), timeout: 10, statusMessage: "⬢ Checking migration safety..." },
         ],
       },
     ],
@@ -661,16 +640,26 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
       {
         matcher: "compact",
         hooks: [
-          {
-            type: "command",
-            command: nodeCmd("pre-compact.js"),
-            timeout: 15,
-            statusMessage: "⬢ Saving state...",
-          },
+          { type: "command", command: nodeCmd("pre-compact.js"), timeout: 15, statusMessage: "⬢ Saving state..." },
         ],
       },
     ],
   };
+
+  // Merge user hooks: strip Qualia-owned commands, preserve everything else.
+  if (!settings.hooks || typeof settings.hooks !== "object") settings.hooks = {};
+  for (const event of Object.keys(qualiaHooks)) {
+    const existing = Array.isArray(settings.hooks[event]) ? settings.hooks[event] : [];
+    // Remove Qualia-owned command entries from each matcher block, drop empty blocks.
+    const cleaned = [];
+    for (const block of existing) {
+      if (!block || !Array.isArray(block.hooks)) continue;
+      const kept = block.hooks.filter((h) => !isQualiaHookCmd(h && h.command));
+      if (kept.length > 0) cleaned.push({ ...block, hooks: kept });
+    }
+    // Append our canonical blocks after the preserved user ones.
+    settings.hooks[event] = [...cleaned, ...qualiaHooks[event]];
+  }
 
   // Permissions — no restrictions on env files or branches.
   // Everyone can read/write .env, push to main.
