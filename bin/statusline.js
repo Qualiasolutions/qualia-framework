@@ -273,11 +273,15 @@ try {
   if (MEMORY_COUNT > 0) {
     LINE1 += ` ${DIM}│${RESET} ${DIM}mem${RESET} ${TEAL}${MEMORY_COUNT}${RESET}`;
   }
+  // Qualia member signature — end of line 1 so it sits above line 2's model info
+  if (QUALIA_FIRST_NAME) {
+    LINE1 += ` ${DIM}│${RESET} ${TEAL}⬢${RESET} ${TEAL_GLOW}Qualia member${RESET}${DIM}:${RESET} ${WHITE}${QUALIA_FIRST_NAME}${RESET}`;
+  }
 } catch {
   LINE1 = `${TEAL}⬢${RESET} ${WHITE}qualia${RESET}`;
 }
 
-// ─── Line 2: Context bar + Cost + Duration + Model + Qualia signature ───
+// ─── Line 2: Context bar + Cost + Duration + Model ───────
 let LINE2 = "";
 try {
   LINE2 =
@@ -285,9 +289,6 @@ try {
     `${DIM}│${RESET} ${DIM}${COST_FMT}${RESET} ` +
     `${DIM}│${RESET} ${DIM}${DUR}${RESET} ` +
     `${DIM}│${RESET} ${TEAL_DIM}${MODEL}${RESET}`;
-  if (QUALIA_FIRST_NAME) {
-    LINE2 += ` ${DIM}│${RESET} ${TEAL}⬢${RESET} ${TEAL_GLOW}Qualia${RESET} ${DIM}·${RESET} ${WHITE}${QUALIA_FIRST_NAME}${RESET}`;
-  }
 } catch {
   LINE2 = `${DIM}${PCT}%${RESET}`;
 }
