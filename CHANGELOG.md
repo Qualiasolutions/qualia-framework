@@ -8,6 +8,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Note: git tags for historical versions were not retained; commit references are approximate
 > and dates reflect commit history rather than npm publish timestamps.
 
+## [4.0.5] — 2026-04-19
+
+**Statusline refresh.** The phase segment now shows milestone + tasks +
+blockers (not just phase number), and the line closes with a
+`⬢ Qualia · {firstName}` signature pulled from
+`~/.claude/.qualia-config.json`. Static `hooks N` / `skills N` counters
+removed — they never changed between projects, so they added noise
+without signal. All 168 tests still green.
+
+### Added
+
+- **`bin/statusline.js` — milestone segment.** When
+  `.planning/tracking.json` has `milestone` + `milestone_name`, the
+  statusline renders `M{n}·{shortName}` (name truncated to 14 chars)
+  before the phase number. Previously only the phase number (`P1/3`)
+  was visible — milestone context had to be looked up manually.
+- **`bin/statusline.js` — task progress.** When `tasks_total > 0`,
+  renders `T{done}/{total}` alongside the phase. Gives mid-phase
+  progress at a glance during `/qualia-build` waves.
+- **`bin/statusline.js` — blocker badge.** When
+  `tracking.json.blockers` is a non-empty array, renders `!{n}` in
+  red. Intentionally loud — blockers should never sit unnoticed.
+- **`bin/statusline.js` — Qualia signature.** Line 2 now ends with
+  `⬢ Qualia · {firstName}` where `firstName` is the first whitespace-
+  delimited token of `installed_by` in `~/.claude/.qualia-config.json`.
+  Branded closer, makes the statusline feel like ours, not a generic
+  Claude Code tool.
+
+### Removed
+
+- **`bin/statusline.js` — hooks/skills counters.** The `hooks N`
+  and `skills N` indicators were removed from line 1. Both counts are
+  effectively static across all projects on a single machine (a given
+  install has the same hooks and skills everywhere), so they were
+  visual noise — they didn't help the employee understand *this*
+  project's state. `mem N` is retained because it genuinely varies
+  per project (different memories accumulated per working directory).
+
 ## [4.0.4] — 2026-04-18
 
 **Audit follow-up + ERP integration upgrade.** Eight concrete improvements

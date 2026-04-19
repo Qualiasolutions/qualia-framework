@@ -154,6 +154,8 @@ try {
 } catch {}
 
 // ─── Phase info from .planning/tracking.json ─────────────
+// Shows: [M{n}·{milestoneName}] P{phase}/{total} T{done}/{total} {status} [!{blockers}]
+// Every segment is optional — missing data is skipped, never rendered as a placeholder.
 let PHASE_INFO = "";
 try {
   const trackingPath = path.join(DIR, ".planning", "tracking.json");
@@ -162,12 +164,46 @@ try {
     const phase = Number(tracking.phase || 0) || 0;
     const total = Number(tracking.total_phases || 0) || 0;
     const status = String(tracking.status || "");
+    const milestone = Number(tracking.milestone || 0) || 0;
+    const milestoneName = String(tracking.milestone_name || "");
+    const tasksDone = Number(tracking.tasks_done || 0) || 0;
+    const tasksTotal = Number(tracking.tasks_total || 0) || 0;
+    const blockers = Array.isArray(tracking.blockers) ? tracking.blockers.length : 0;
+
+    const parts = [];
+
+    // Milestone: M{n}·{shortName}   (short name trimmed to 14 chars)
+    if (milestone > 0) {
+      let mStr = `M${milestone}`;
+      if (milestoneName) {
+        const shortName = milestoneName.length > 14 ? milestoneName.slice(0, 13) + "…" : milestoneName;
+        mStr += `${DIM}·${RESET}${TEAL_GLOW}${shortName}`;
+      }
+      parts.push(`${TEAL}${mStr}${RESET}`);
+    }
+
+    // Phase: P{phase}/{total}
     if (total > 0) {
-      const pdone = Math.floor((phase * 100) / total);
-      const pfill = Math.max(0, Math.min(4, Math.floor(pdone / 25)));
-      const pempt = 4 - pfill;
-      const pbar = "●".repeat(pfill) + "○".repeat(pempt);
-      PHASE_INFO = `${TEAL}${pbar}${RESET} ${WHITE}P${phase}/${total}${RESET} ${TEAL_GLOW}${status}${RESET}`;
+      parts.push(`${WHITE}P${phase}/${total}${RESET}`);
+    }
+
+    // Tasks within phase: T{done}/{total}
+    if (tasksTotal > 0) {
+      parts.push(`${DIM}T${RESET}${WHITE}${tasksDone}/${tasksTotal}${RESET}`);
+    }
+
+    // Status
+    if (status) {
+      parts.push(`${TEAL_GLOW}${status}${RESET}`);
+    }
+
+    // Blockers — red badge, only when > 0
+    if (blockers > 0) {
+      parts.push(`${RED}!${blockers}${RESET}`);
+    }
+
+    if (parts.length > 0) {
+      PHASE_INFO = parts.join(` ${DIM}·${RESET} `);
     }
   }
 } catch {}
@@ -186,33 +222,19 @@ try {
   }
 } catch {}
 
-// ─── Hooks count ─────────────────────────────────────────
-let HOOKS_COUNT = 0;
+// ─── Qualia identity: first name of the installed employee ─────────
+// Read from ~/.claude/.qualia-config.json. Used as the "signature" at the
+// end of line 2. Gracefully degrades to empty string if the config is
+// missing (pre-install, broken install, or running outside a Qualia env).
+let QUALIA_FIRST_NAME = "";
 try {
-  const settingsPath = path.join(HOME, ".claude", "settings.json");
-  if (fs.existsSync(settingsPath)) {
-    const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-    if (settings.hooks) {
-      for (const event of Object.values(settings.hooks)) {
-        if (Array.isArray(event)) {
-          for (const matcher of event) {
-            if (matcher.hooks && Array.isArray(matcher.hooks)) {
-              HOOKS_COUNT += matcher.hooks.length;
-            }
-          }
-        }
-      }
+  const configPath = path.join(HOME, ".claude", ".qualia-config.json");
+  if (fs.existsSync(configPath)) {
+    const cfg = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    const fullName = String(cfg.installed_by || "").trim();
+    if (fullName) {
+      QUALIA_FIRST_NAME = fullName.split(/\s+/)[0] || "";
     }
-  }
-} catch {}
-
-// ─── Skills count ────────────────────────────────────────
-let SKILLS_COUNT = 0;
-try {
-  const skillsDir = path.join(HOME, ".claude", "skills");
-  if (fs.existsSync(skillsDir)) {
-    const entries = fs.readdirSync(skillsDir, { withFileTypes: true });
-    SKILLS_COUNT = entries.filter(e => e.isDirectory() || e.name.endsWith(".md")).length;
   }
 } catch {}
 
@@ -247,19 +269,15 @@ try {
   if (AGENT) LINE1 += ` ${DIM}│${RESET} ${TEAL}⚡${AGENT}${RESET}`;
   if (WORKTREE) LINE1 += ` ${DIM}│${RESET} ${TEAL_DIM}⎇ ${WORKTREE}${RESET}`;
   if (PHASE_INFO) LINE1 += ` ${DIM}│${RESET} ${PHASE_INFO}`;
-  // Memory, hooks, skills — context indicators with labels
-  const contextParts = [];
-  if (MEMORY_COUNT > 0) contextParts.push(`${DIM}mem${RESET} ${TEAL}${MEMORY_COUNT}${RESET}`);
-  if (HOOKS_COUNT > 0) contextParts.push(`${DIM}hooks${RESET} ${TEAL_GLOW}${HOOKS_COUNT}${RESET}`);
-  if (SKILLS_COUNT > 0) contextParts.push(`${DIM}skills${RESET} ${TEAL_DIM}${SKILLS_COUNT}${RESET}`);
-  if (contextParts.length > 0) {
-    LINE1 += ` ${DIM}│${RESET} ${contextParts.join(` ${DIM}·${RESET} `)}`;
+  // Memory — the one context indicator that's actually project-specific
+  if (MEMORY_COUNT > 0) {
+    LINE1 += ` ${DIM}│${RESET} ${DIM}mem${RESET} ${TEAL}${MEMORY_COUNT}${RESET}`;
   }
 } catch {
   LINE1 = `${TEAL}⬢${RESET} ${WHITE}qualia${RESET}`;
 }
 
-// ─── Line 2: Context bar + Cost + Duration + Model ───────
+// ─── Line 2: Context bar + Cost + Duration + Model + Qualia signature ───
 let LINE2 = "";
 try {
   LINE2 =
@@ -267,6 +285,9 @@ try {
     `${DIM}│${RESET} ${DIM}${COST_FMT}${RESET} ` +
     `${DIM}│${RESET} ${DIM}${DUR}${RESET} ` +
     `${DIM}│${RESET} ${TEAL_DIM}${MODEL}${RESET}`;
+  if (QUALIA_FIRST_NAME) {
+    LINE2 += ` ${DIM}│${RESET} ${TEAL}⬢${RESET} ${TEAL_GLOW}Qualia${RESET} ${DIM}·${RESET} ${WHITE}${QUALIA_FIRST_NAME}${RESET}`;
+  }
 } catch {
   LINE2 = `${DIM}${PCT}%${RESET}`;
 }
