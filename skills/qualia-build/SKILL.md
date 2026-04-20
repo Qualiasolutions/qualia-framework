@@ -96,6 +96,13 @@ Grounding + rubrics: @~/.claude/rules/grounding.md
 {inlined contents}
 </task_context>
 
+<wave_context>
+Other tasks in Wave {W} (running in parallel, do NOT touch their files):
+- Task {N}: "{title}" — files: {comma-separated Files list}
+- Task {M}: "{title}" — files: {comma-separated Files list}
+(If you are the only task in this wave, omit this block.)
+</wave_context>
+
 <task>
 {paste the single task block from the plan — title, wave, persona, files, depends-on, why, acceptance-criteria, action, validation, context}
 </task>

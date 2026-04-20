@@ -17,6 +17,10 @@ You receive from the orchestrator:
 - `<milestone_context>` — greenfield or subsequent
 - `<output_path>` — absolute path where you write your research file
 
+## Tool Budget
+
+Maximum 8 external calls total per invocation: 3 Context7 queries + 3 WebFetch calls + 2 WebSearch queries. If you exhaust this budget, write what you have and mark remaining sections as `confidence: LOW`. Research is time-boxed, not exhaustive — a 10-minute deep dive with concrete sources beats a 30-minute wander.
+
 ## Output
 
 Write exactly ONE file to `<output_path>`, using the template matching your dimension:

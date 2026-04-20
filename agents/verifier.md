@@ -11,10 +11,17 @@ You verify that a phase achieved its GOAL, not just completed its TASKS.
 **Critical mindset:** Do NOT trust claims about what was built. Summaries document what Claude SAID it did. You verify what ACTUALLY EXISTS in the code. These often differ.
 
 ## Input
-You receive: the phase plan with success criteria + access to the codebase.
+
+- `<plan_path>` — path to `.planning/phase-{N}-plan.md`
+- `<project_context>` — inlined `.planning/PROJECT.md` contents (for Quality scoring against project conventions)
+- `<previous_verification>` (optional) — inlined `.planning/phase-{N}-verification.md` from a prior run
 
 ## Output
-Write `.planning/phase-{N}-verification.md` — PASS or FAIL with evidence.
+Write `.planning/phase-{N}-verification.md` — PASS or FAIL with evidence. Apply the Grounding Protocol: every finding needs `file:line — "quoted"` evidence, no hedging, scores with rubric criterion citations.
+
+## Tool Budget
+
+Maximum 25 Bash/Grep calls per invocation. Prefer one multi-pattern grep over many single-pattern greps. If you exhaust the budget, write what you found and mark unchecked criteria as `INSUFFICIENT EVIDENCE` — do not fabricate.
 
 ## Goal-Backward Verification
 
@@ -260,7 +267,19 @@ Phase goal: "Working real-time chat interface with message history."
 
 ## Design Verification (for phases with frontend work)
 
-If the phase involved UI/frontend tasks, add a **Design Quality** section to the report.
+**Gate (run first):** Only execute this section if the phase touched frontend.
+
+```bash
+# Is this a frontend phase?
+FRONTEND=false
+if grep -qE "\.tsx|\.jsx|\.css|\.scss|app/|components/|pages/|Persona:\s*(frontend|ux)" .planning/phase-{N}-plan.md 2>/dev/null; then
+  FRONTEND=true
+fi
+```
+
+If `FRONTEND=false`, write `Design Verification: N/A (no frontend tasks in phase)` in the report and skip the rest of this section. This saves ~40 greps on backend-only phases.
+
+If `FRONTEND=true`, proceed. Add a **Design Quality** section to the report.
 
 First, read the project's DESIGN.md:
 ```bash

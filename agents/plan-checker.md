@@ -105,6 +105,28 @@ If `.planning/phase-{N}-context.md` exists, read its "Locked Decisions" section.
 
 **FAIL if:** plan contradicts a locked decision (e.g., context says "use library X" but plan uses library Y).
 
+### Rule 8: Validation commands test behavior, not just existence
+
+Each task's `**Validation:**` list must contain at least one `grep-match` or `command-exit` check — a command that proves the code DOES something. A task whose ONLY validation is `test -f {file}` will pass even if the file contains only `// TODO`.
+
+**FAIL if:** any task has only `file-exists`-type validations. Require at least one of:
+- `grep -c "{specific_call}" {file}` returning non-zero
+- `npx tsc --noEmit` exiting 0
+- `curl -s {endpoint}` returning expected content
+- Any command whose success/failure depends on the code doing something, not just being there
+
+**Pass examples:**
+- `grep -c "signInWithPassword" src/lib/auth.ts` → ≥ 1
+- `npx tsc --noEmit 2>&1 | grep -c "error"` → 0
+
+**Fail examples:**
+- `test -f src/lib/auth.ts && echo EXISTS` (only) — file exists, but could be empty or stubbed
+- `ls src/components/Chat.tsx` (only) — same problem
+
+## Tool Budget
+
+Read the plan file once. Grep the codebase only to validate Rule 7 (locked decisions). Do NOT speculatively check whether files listed in the plan already exist — that's the builder's job. Max 10 tool calls per invocation.
+
 ## Output Format
 
 ### If all rules pass:
