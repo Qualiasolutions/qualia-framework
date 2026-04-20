@@ -40,9 +40,11 @@ ls package.json next.config.* tsconfig.json supabase/ app/ src/ 2>/dev/null
 
 ### 1. Security Scan
 
-Run every command. Record each finding with severity.
+**Run the independent greps as parallel Bash calls in a single response** (they don't depend on each other — serial execution wastes 15-30s on large codebases). Only the `find … | for` loops are sequential.
 
 ```bash
+# PARALLEL BATCH (issue these in one response turn):
+
 # CRITICAL: service_role in client code
 grep -rn "service_role" --include="*.ts" --include="*.tsx" --include="*.js" app/ components/ src/ lib/ 2>/dev/null | grep -v node_modules | grep -v "\.server\.\|[\\/]server[\\/]\|[\\/]app[\\/]api[\\/]\|route\.\|middleware\."
 
@@ -55,6 +57,15 @@ grep -rn "dangerouslySetInnerHTML\|eval(" --include="*.ts" --include="*.tsx" --i
 # CRITICAL: .env files tracked in git
 git ls-files | grep -i "\.env" | grep -v "\.example\|\.template\|\.sample"
 
+# HIGH: client-side database mutations
+grep -rn "\.insert\|\.update\|\.delete\|\.upsert" --include="*.tsx" --include="*.jsx" app/ components/ 2>/dev/null | grep -v "use server" | grep -v "\.server\."
+
+# MEDIUM: npm vulnerabilities
+npm audit --json 2>/dev/null | node -e "try{const d=JSON.parse(require('fs').readFileSync(0,'utf8'));const v=d.metadata?.vulnerabilities||{};console.log('critical:',v.critical||0,'high:',v.high||0,'moderate:',v.moderate||0)}catch{console.log('audit unavailable')}"
+
+# END PARALLEL BATCH
+
+# SEQUENTIAL (depends on find):
 # HIGH: API routes without auth
 for f in $(find app/api -name "route.ts" -o -name "route.js" 2>/dev/null); do
   if ! grep -q "getUser\|getSession\|auth()\|createClient" "$f" 2>/dev/null; then
@@ -66,12 +77,6 @@ done
 for f in $(find app/api -name "route.ts" -o -name "route.js" 2>/dev/null); do
   grep -L "z\.\|zod\|Zod\|parse\|safeParse" "$f" 2>/dev/null
 done
-
-# HIGH: client-side database mutations
-grep -rn "\.insert\|\.update\|\.delete\|\.upsert" --include="*.tsx" --include="*.jsx" app/ components/ 2>/dev/null | grep -v "use server" | grep -v "\.server\."
-
-# MEDIUM: npm vulnerabilities
-npm audit --json 2>/dev/null | node -e "try{const d=JSON.parse(require('fs').readFileSync(0,'utf8'));const v=d.metadata?.vulnerabilities||{};console.log('critical:',v.critical||0,'high:',v.high||0,'moderate:',v.moderate||0)}catch{console.log('audit unavailable')}"
 ```
 
 ### 2. Code Quality Scan
@@ -96,8 +101,14 @@ grep -rn "console\.log" --include="*.ts" --include="*.tsx" app/ components/ src/
 ### 3. Performance Scan
 
 ```bash
-# Build output — route sizes and first load JS
-npx next build 2>&1 | grep -E "Route|First Load|shared by all|○|●|ƒ|λ" | tail -25
+# Build output — read existing build artifacts (don't trigger a fresh build during a scan)
+if [ -d ".next" ]; then
+  du -sh .next/static/chunks/*.js 2>/dev/null | sort -rh | head -10
+  echo "---"
+  find .next -name "*.js" -size +200k 2>/dev/null | head -5
+else
+  echo "No .next/ build output — run 'npx next build' separately for bundle analysis (review skill does NOT trigger builds — it's a scan)"
+fi
 
 # Heavy files (>300 lines often means split needed)
 find app/ components/ src/ -name "*.tsx" -o -name "*.ts" 2>/dev/null | xargs wc -l 2>/dev/null | sort -rn | head -10
