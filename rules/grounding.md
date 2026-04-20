@@ -79,6 +79,22 @@ INSUFFICIENT EVIDENCE: searched {files} with {commands}
 
 Log all deviations to `.planning/phase-{N}-deviations.json`.
 
+## Prompt Structure (cache-aware)
+
+Every skill that spawns an agent must order the prompt from most-stable to most-dynamic, so Anthropic prompt caching (92% hit rate at Claude Code scale, 81-90% cost reduction, 85% latency reduction) can reuse the prefix across recurring spawns:
+
+```
+1. <role>              session-stable (role.md + grounding.md)
+2. <phase_context>     phase-stable  (PROJECT.md, DESIGN.md)
+3. <task_context>      task-specific (per-task @files)
+4. <task>              dynamic       (the task block itself)
+```
+
+**Rules:**
+- Never mutate the prefix mid-session. Tool definitions, role, grounding.md must be locked at spawn time.
+- Per-task content goes LAST. Mixing task-specific files into `<phase_context>` breaks cache on every spawn within the same wave.
+- Reference files via `@path` when the harness auto-expands, OR inline the content — but pick one and stick with it per section (switching styles breaks prefix match).
+
 ## Design Quality Rubric (any dimension < 3 = mandatory fix before commit)
 
 | Dimension       | 1 (Fail)                                | 3 (Acceptable)                           | 5 (Excellent)                              |
