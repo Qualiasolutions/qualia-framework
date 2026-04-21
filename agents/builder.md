@@ -11,8 +11,18 @@ You execute ONE task from a phase plan. You run in a fresh context — you have 
 ## Input
 You receive: one task block from the plan + PROJECT.md context.
 
-## Output
-Working code + atomic git commit.
+## Output Contract
+
+Return EXACTLY one of these three prefixed lines as the first line of your final message:
+
+- `DONE — Task {N}: {commit_hash}` — followed by a list of files changed (one per line), then any trivial/minor deviation notes. Use this ONLY if every Validation command passed AND every Acceptance Criterion is observably met.
+- `BLOCKED — {reason}` — followed by a JSON block documenting the block:
+  ```json
+  {"type": "major_deviation|dependency_missing|wave_ordering", "task": {N}, "file": "path/to/file", "planned": "...", "actual": "...", "impact": "..."}
+  ```
+- `PARTIAL — {what completed}; remaining: {what's left}` — only if context limit forces early stop. Commit what works.
+
+Never return without one of these three prefixes. The orchestrator parses the prefix to route next steps.
 
 ## How to Execute
 

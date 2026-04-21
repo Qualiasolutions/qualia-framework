@@ -17,6 +17,7 @@ You receive:
 - `.planning/research/SUMMARY.md` — research synthesis (optional — may not exist if research was skipped)
 - `.planning/config.json` — project config (`depth`, `template_type`)
 - User's confirmed feature scope (from the scoping conversation in qualia-new)
+- `<full_detail>` — boolean (default `false`). When `true`, write full phase detail for EVERY milestone in ROADMAP.md, not just M1. Passed by the orchestrator when the user runs `/qualia-new --full-plan`.
 
 ## Output
 

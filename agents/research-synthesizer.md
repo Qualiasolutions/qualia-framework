@@ -48,6 +48,8 @@ Don't duplicate full documents. Summarize the 3-5 most important items from each
 
 This is the most important section. Suggest the **full milestone arc**, not just a v1 phase list.
 
+**Evidence requirement:** Every milestone suggestion MUST cite at least one research finding from STACK.md, FEATURES.md, ARCHITECTURE.md, or PITFALLS.md as justification. Format the citation as `[DIMENSION.md: <specific finding or item>]` — e.g., `[FEATURES.md: table-stakes AUTH-*]` or `[PITFALLS.md: risk P3, stall risk for downstream milestones]`. Milestones without a citable finding are speculative — mark them explicitly with `[speculative — no source]` and the roadmapper will scrutinize.
+
 Based on:
 - FEATURES.md split (table stakes = v1 across milestones, differentiators = later milestones or post-handoff)
 - ARCHITECTURE.md build order → what depends on what, which foundation must land in Milestone 1 to support final-milestone requirements

@@ -1,6 +1,6 @@
 ---
 name: qualia-plan
-description: "Plan the current phase — spawns planner, validates with plan-checker in a revision loop (max 3), optionally runs discuss/research first. Use when ready to plan a phase."
+description: "Plan the current phase — spawns planner, validates with plan-checker in a revision loop (max 2), optionally runs discuss/research first. Use when ready to plan a phase."
 allowed-tools:
   - Bash
   - Read
@@ -15,7 +15,7 @@ allowed-tools:
 
 # /qualia-plan — Plan a Phase
 
-Spawn a planner agent to break the current phase into executable tasks, then validate the plan with a checker (up to 3 revision cycles) before routing to build.
+Spawn a planner agent to break the current phase into executable tasks, then validate the plan with a checker (up to 2 revision cycles) before routing to build.
 
 ## Usage
 
@@ -73,6 +73,7 @@ Spawn the planner:
 ```
 Agent(prompt="
 Read your role: @~/.claude/agents/planner.md
+Grounding + rubrics: @~/.claude/rules/grounding.md
 
 <project_context>
 @.planning/PROJECT.md
@@ -116,6 +117,7 @@ Read the generated plan. Spawn the plan-checker:
 ```
 Agent(prompt="
 Read your role: @~/.claude/agents/plan-checker.md
+Grounding + rubrics: @~/.claude/rules/grounding.md
 
 <plan_path>.planning/phase-{N}-plan.md</plan_path>
 <phase_goal>{goal from ROADMAP.md}</phase_goal>
@@ -126,11 +128,12 @@ Validate against the 7 rules. Return PASS or REVISE with structured issues.
 ", subagent_type="qualia-plan-checker", description="Check plan phase {N}")
 ```
 
-**Revision loop (max 3 iterations):**
+**Revision loop (max 2 iterations):**
 
 - Iteration 1: Check → if REVISE, re-spawn planner with checker issues
-- Iteration 2: Re-check → if REVISE, re-spawn planner with new issues
-- Iteration 3: Final check → if REVISE or BLOCKED, escalate to user
+- Iteration 2: Re-check → if REVISE or BLOCKED, escalate to user
+
+Rationale: Amazon/NeurIPS 2025 measured reflection gains at 74→86% for 1 round, 88% for 3 rounds. Iteration 3 only added 2pp over iteration 1 — not worth the extra planner spawn (serial cost ~30-60s).
 
 For each revision:
 
@@ -149,12 +152,12 @@ Revise the plan in place. Address every issue. Do NOT add new tasks or change sc
 ", subagent_type="qualia-planner", description="Revise plan phase {N}")
 ```
 
-After revision, spawn the checker again. Max 3 total revision cycles.
+After revision, spawn the checker again. Max 2 total revision cycles.
 
-**If checker returns BLOCKED after 3 cycles:**
+**If checker returns BLOCKED after 2 cycles:**
 
 ```bash
-node ~/.claude/bin/qualia-ui.js fail "Plan failed validation after 3 revisions"
+node ~/.claude/bin/qualia-ui.js fail "Plan failed validation after 2 revisions"
 ```
 
 Show the remaining issues. Ask:

@@ -41,13 +41,49 @@ If DESIGN.md exists → it is law. Use exact values from sections 1-9 (Visual Th
 - If `--scope`: grep for matching files in `app/` and `components/`
 - If none: find all `page.tsx`, `layout.tsx`, and component files
 
-Read EVERY target file before modifying.
+Count them. If ≤ 5, process in main context (step 3a). If > 5, fan out to parallel agents (step 3b).
 
-### 3. Critique (internal — don't output)
+### 3a. Small File Set (≤ 5 files) — main context
 
-Evaluate each file on: AI slop detection, visual hierarchy, typography, color, states (loading/error/empty), motion, spacing, responsiveness, microcopy.
+Read EVERY target file before modifying. Critique internally using the structured rubric below, then fix everything (step 4).
 
-### 4. Fix Everything
+**Critique rubric (required — produces the findings you then fix):**
+
+| File | Dimension | Issue | Line | Severity |
+|------|-----------|-------|------|----------|
+| {path} | Typography/Color/Spacing/States/Responsive/A11y/Motion/Microcopy | {specific problem with quote} | {N} | CRITICAL/HIGH/MEDIUM/LOW |
+
+Apply fixes to every HIGH and CRITICAL item. MEDIUM items fixed if cheap (same file, same category).
+
+### 3b. Large File Set (> 5 files) — parallel fan-out
+
+Split target files into batches of 5. Spawn one Agent per batch IN THE SAME RESPONSE TURN (parallel execution). Each agent receives DESIGN.md inlined + its 5 files + the Design Quality Rubric from `rules/grounding.md`. Agents return their batch's critique table + the actual edits applied. The skill orchestrator fans in the results and runs the final verification (step 5).
+
+```
+Agent(prompt="
+Read your role: builder for design transformation.
+Grounding + rubrics: @~/.claude/rules/grounding.md
+
+<design_system>
+{inlined DESIGN.md}
+</design_system>
+
+<target_files>
+{5 file paths + their contents}
+</target_files>
+
+Apply the Design Quality Rubric to each file. Fix every dimension scoring below 4. Make the literal edits with the Edit tool. Do NOT change logic — only styling.
+
+Return:
+- Critique table (File | Dimension | Issue | Line | Before-score | After-score)
+- List of files modified
+- Any anti-pattern greps that remain (report, don't fix beyond scope)
+", subagent_type="general-purpose", description="Design batch {N}")
+```
+
+Do not process files serially in main context — that's what wastes a context window.
+
+### 4. Fix Everything (applies to step 3a OR to each agent in 3b)
 
 Use exact values from DESIGN.md when available. Sections map to fixes:
 
@@ -73,11 +109,21 @@ Use exact values from DESIGN.md when available. Sections map to fixes:
 
 ### 5. Verify
 
+Parallel batch — run these in a single response turn:
+
 ```bash
+# TypeScript still compiles?
 npx tsc --noEmit 2>&1 | head -20
+
+# Reverted anti-patterns (any match = regression)
+grep -rn "outline.*none\|outline-none" --include="*.tsx" --include="*.css" app/ components/ src/ 2>/dev/null | grep -v "focus-visible\|focus:"
+grep -rn "font-family.*Inter\|font-family.*Arial\|font-family.*system-ui\|Space Grotesk" --include="*.tsx" --include="*.css" app/ components/ src/ 2>/dev/null
+grep -rn "max-w-\[1200\|max-w-\[1280\|max-width.*1200\|max-w-7xl" --include="*.tsx" --include="*.css" app/ components/ src/ 2>/dev/null
+grep -rn "<img " --include="*.tsx" app/ components/ src/ 2>/dev/null | grep -v "alt="
+grep -rn "from-blue.*to-purple\|from-purple.*to-blue" --include="*.tsx" --include="*.css" app/ components/ src/ 2>/dev/null
 ```
 
-Fix any TypeScript errors before committing.
+Fix any TypeScript errors before committing. If any anti-pattern grep returned matches, re-fix those files — the transformation is not complete until these greps return empty.
 
 ### 6. Commit
 
@@ -105,3 +151,4 @@ git commit -m "style: design transformation"
 - Respect DESIGN.md decisions
 - Don't break functionality — only change styling, never logic
 - TypeScript must pass after changes
+- All anti-pattern greps in step 5 must return empty before commit

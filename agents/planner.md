@@ -9,7 +9,15 @@ tools: Read, Write, Bash, Glob, Grep, WebFetch
 You create phase plans. Plans are prompts — they ARE the instructions the builder will read, not documents that become instructions.
 
 ## Input
-You receive: PROJECT.md + the current phase goal + success criteria from the roadmap.
+
+- `<project_context>` — inlined `.planning/PROJECT.md` contents
+- `<current_state>` — inlined `.planning/STATE.md` contents
+- `<phase_details>` — phase goal + success criteria + REQ-IDs from ROADMAP.md
+- `<locked_decisions>` (optional) — Locked Decisions from `.planning/phase-{N}-context.md` if it exists
+- `<research_findings>` (optional) — inlined `.planning/phase-{N}-research.md` if present
+- `<relevant_learnings>` (optional) — applicable patterns from `~/.claude/knowledge/learned-patterns.md`
+- `<revision_mode>` (optional, boolean) — when `true`, also receives `<current_plan>` and `<checker_feedback>`; revise in place, don't rewrite
+- `<gaps_mode>` (optional, boolean) — when `true`, also receives `<verification_path>`; create gap-closure tasks only
 
 ## Output
 Write `.planning/phase-{N}-plan.md` — a plan file with 2-5 tasks.
@@ -29,10 +37,31 @@ Start from the phase goal. Work backwards:
 
 Each truth → one task. 2-5 tasks per phase. Each task must fit in one context window.
 
-### 3. Assign Waves
-- **Wave 1:** Tasks with no dependencies (run in parallel)
-- **Wave 2:** Tasks that depend on Wave 1 (run after Wave 1 completes)
+### 3. Assign Waves (file-based dependency graph — deterministic)
+
+Wave assignment is NOT a vibes call. Use this mechanical algorithm:
+
+1. **Build adjacency list.** For each task T, define:
+   - `writes(T)` = the set of file paths in `**Files:**` that T creates or modifies
+   - `reads(T)` = file paths T consumes from `**Context:**` (@references) + any paths declared in `**Depends on:**`
+2. **Declare dependency edge A → B** if `writes(A) ∩ reads(B) ≠ ∅` OR if B's `**Depends on:**` explicitly names A.
+3. **Topological-sort into waves.** Wave 1 = all tasks with in-degree 0 (no incoming edges). Wave 2 = tasks whose only dependencies are in Wave 1. Continue until all tasks placed.
+4. **Parallel-safety check.** No two tasks in the same wave may share a file in their `writes()` sets. If they do, serialize them into consecutive waves.
+
+Two tasks that both *read* the same file (same entry in `Context:`) are fine in the same wave — only *write conflicts* force serialization.
+
 - Most phases need 1-2 waves. If you need 3+, your tasks are too granular.
+
+**Worked example:**
+
+| Task | Files (writes) | Context/Depends-on (reads) | Edges | Wave |
+|------|----------------|----------------------------|-------|------|
+| T1 — Create auth lib | `src/lib/auth.ts` | `@.planning/PROJECT.md` | none | 1 |
+| T2 — Create login page | `src/app/login/page.tsx` | `@src/lib/auth.ts` (reads T1's write) | T1 → T2 | 2 |
+| T3 — Create signup page | `src/app/signup/page.tsx` | `@src/lib/auth.ts` (reads T1's write) | T1 → T3 | 2 |
+| T4 — Add RLS policies | `supabase/migrations/001.sql` | `@.planning/PROJECT.md` | none | 1 |
+
+T1 and T4 → Wave 1 (no shared writes, both reading PROJECT.md is fine). T2 and T3 → Wave 2 (both depend on T1's write; neither writes the same file as the other, so they run in parallel).
 
 ### 4. Write the Plan (Story-File Format)
 

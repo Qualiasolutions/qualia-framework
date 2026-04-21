@@ -62,7 +62,7 @@ node ~/.claude/bin/qualia-ui.js banner build {N} "{phase name}"
 node ~/.claude/bin/qualia-ui.js wave {W} {total_waves} {tasks_in_wave}
 ```
 
-**For each task in the wave (parallel if multiple):**
+**For each task in the wave — spawn ALL tasks in this wave as separate `Agent()` calls in the SAME response turn so the harness executes them concurrently. Do NOT await one task before spawning the next. Sequential spawning defeats wave parallelism.**
 
 ```bash
 node ~/.claude/bin/qualia-ui.js task {task_num} "{task title}"
@@ -81,30 +81,41 @@ Spawn a fresh builder subagent:
 ```
 Agent(prompt="
 Read your role: @~/.claude/agents/builder.md
+Grounding + rubrics: @~/.claude/rules/grounding.md
 
-<pre-loaded-context>
+<phase_context>
 # PROJECT.md
 {inlined contents of .planning/PROJECT.md}
 
 # DESIGN.md (if frontend task)
 {inlined contents of .planning/DESIGN.md}
+</phase_context>
 
+<task_context>
 # {each @file from task.Context}
 {inlined contents}
-</pre-loaded-context>
+</task_context>
 
-YOUR TASK:
+<wave_context>
+Other tasks in Wave {W} (running in parallel, do NOT touch their files):
+- Task {N}: "{title}" — files: {comma-separated Files list}
+- Task {M}: "{title}" — files: {comma-separated Files list}
+(If you are the only task in this wave, omit this block.)
+</wave_context>
+
+<task>
 {paste the single task block from the plan — title, wave, persona, files, depends-on, why, acceptance-criteria, action, validation, context}
+</task>
 
-All files in <pre-loaded-context> are already in your working memory — do NOT
-re-Read them. Only Read files NOT in the pre-loaded context (e.g. existing
-project code you need to modify).
+All files in <phase_context> and <task_context> are already in your working memory — do NOT re-Read them. Only Read files NOT inlined (project code you need to modify).
 
-Execute the task. Commit when done.
+Execute the task. Commit when done. Return DONE/BLOCKED/PARTIAL per your Output Contract.
 ", subagent_type="qualia-builder", description="Task {N}: {title}")
 ```
 
-**Why pre-inline:** without it, the builder's first actions are 3-5 Read tool calls to orient itself (PROJECT.md, DESIGN.md, context files). With pre-inline, the builder starts already oriented and spends its context budget on the actual task.
+**Why this ordering (cache-aware):** The role + grounding.md (session-stable) comes FIRST, phase_context (stable across every task in the phase) comes SECOND, task_context (varies per task) comes LAST. This preserves prefix-cache hits across tasks in the same wave — Anthropic prompt caching matches byte-identical prefixes, and a stable prefix of ~2-5k tokens hits at 92% rate (Claude Code benchmark). Sequential pre-inline without this split breaks cache on every task.
+
+**Why pre-inline at all:** without it, the builder's first actions are 3-5 Read tool calls to orient itself. With pre-inline, the builder starts already oriented and spends its context budget on the actual task.
 
 **After each task completes:**
 - Verify the commit exists: `git log --oneline -1`
