@@ -25,7 +25,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          # No `cache: 'npm'` — this framework has zero runtime deps and no
+          # package-lock.json. setup-node's cache option requires a lockfile
+          # and hard-fails without one. Prior to this fix every CI run across
+          # 18 matrix cells reported FAILURE before tests even ran, and PRs
+          # were being merged on red CI because the root cause was a setup
+          # step, not a test failure. Zero deps = nothing to cache.
 
       - name: Run tests
         shell: bash
