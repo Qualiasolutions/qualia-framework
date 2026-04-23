@@ -74,10 +74,16 @@ function commitStamp() {
   // --no-verify: skip user pre-commit hooks (this is a bot commit).
   // --no-gpg-sign: don't pop a signing prompt for a chore commit.
   // --author: attribute to bot, not user.
-  const add = git(["add", TRACKING]);
+  // -c core.autocrlf=false: without this, Windows installs with autocrlf=true
+  // normalize the just-written LF-terminated JSON to CRLF in the index, so the
+  // diff against HEAD is empty, the commit fails, and we roll back the stamp.
+  // Forcing autocrlf=false for this one add/commit pair preserves the JSON as
+  // written and keeps the stamp consistent across platforms.
+  const add = git(["-c", "core.autocrlf=false", "add", TRACKING]);
   if (add.status !== 0) return { skipped: "git-add-failed", error: add.stderr };
 
   const commit = git([
+    "-c", "core.autocrlf=false",
     "commit",
     "--no-verify",
     "--no-gpg-sign",
