@@ -379,6 +379,128 @@ else
 fi
 rm -rf "$TMP"
 
+# --- git-guardrails.js ---
+echo ""
+echo "git-guardrails:"
+
+# No stdin / no command → allow (exit 0)
+echo '{}' | $NODE "$HOOKS_DIR/git-guardrails.js" > /dev/null 2>&1
+assert_exit "no command → allowed" 0 $?
+
+# Force push to main → BLOCK
+echo '{"tool_input":{"command":"git push --force origin main"}}' | $NODE "$HOOKS_DIR/git-guardrails.js" > /dev/null 2>&1
+assert_exit "force-push to main → blocked" 2 $?
+
+echo '{"tool_input":{"command":"git push -f origin master"}}' | $NODE "$HOOKS_DIR/git-guardrails.js" > /dev/null 2>&1
+assert_exit "force-push (-f) to master → blocked" 2 $?
+
+# --force-with-lease to main → ALLOW (the safe variant)
+echo '{"tool_input":{"command":"git push --force-with-lease origin main"}}' | $NODE "$HOOKS_DIR/git-guardrails.js" > /dev/null 2>&1
+assert_exit "--force-with-lease to main → allowed" 0 $?
+
+# Regular push → ALLOW
+echo '{"tool_input":{"command":"git push origin feature/x"}}' | $NODE "$HOOKS_DIR/git-guardrails.js" > /dev/null 2>&1
+assert_exit "regular push → allowed" 0 $?
+
+# git clean -fd → BLOCK
+echo '{"tool_input":{"command":"git clean -fd"}}' | $NODE "$HOOKS_DIR/git-guardrails.js" > /dev/null 2>&1
+assert_exit "git clean -fd → blocked" 2 $?
+
+echo '{"tool_input":{"command":"git clean -fdx"}}' | $NODE "$HOOKS_DIR/git-guardrails.js" > /dev/null 2>&1
+assert_exit "git clean -fdx → blocked" 2 $?
+
+# git branch -D main → BLOCK
+echo '{"tool_input":{"command":"git branch -D main"}}' | $NODE "$HOOKS_DIR/git-guardrails.js" > /dev/null 2>&1
+assert_exit "git branch -D main → blocked" 2 $?
+
+# rm -rf .git → BLOCK
+echo '{"tool_input":{"command":"rm -rf .git"}}' | $NODE "$HOOKS_DIR/git-guardrails.js" > /dev/null 2>&1
+assert_exit "rm -rf .git → blocked" 2 $?
+
+# rm -rf src → ALLOW (only .git is special)
+echo '{"tool_input":{"command":"rm -rf src/old"}}' | $NODE "$HOOKS_DIR/git-guardrails.js" > /dev/null 2>&1
+assert_exit "rm -rf src/old → allowed" 0 $?
+
+# QUALIA_ALLOW_DESTRUCTIVE=1 escape hatch → ALLOW even force push
+echo '{"tool_input":{"command":"git push --force origin main"}}' | QUALIA_ALLOW_DESTRUCTIVE=1 $NODE "$HOOKS_DIR/git-guardrails.js" > /dev/null 2>&1
+assert_exit "QUALIA_ALLOW_DESTRUCTIVE=1 → allowed despite force-push" 0 $?
+
+# Block reason includes "BLOCKED" + "main" for force push to main
+OUT=$(echo '{"tool_input":{"command":"git push --force origin main"}}' | $NODE "$HOOKS_DIR/git-guardrails.js" 2>&1)
+if echo "$OUT" | grep -q "BLOCKED" && echo "$OUT" | grep -q "main"; then
+  echo "  ✓ block reason includes BLOCKED + main"
+  PASS=$((PASS + 1))
+else
+  echo "  ✗ block reason missing BLOCKED or main: $OUT"
+  FAIL=$((FAIL + 1))
+fi
+
+# --- stop-session-log.js ---
+echo ""
+echo "stop-session-log:"
+
+# Outside a git repo, with nothing to log → exit 0 silent
+TMP=$(mktemp -d)
+HOME="$TMP" $NODE "$HOOKS_DIR/stop-session-log.js" >/dev/null 2>&1
+assert_exit "no activity → exit 0 silent" 0 $?
+# Daily log dir might or might not exist; the hook must NOT crash either way.
+rm -rf "$TMP"
+
+# In a git repo with .planning/tracking.json → writes to daily log
+TMP=$(mktemp -d)
+mkdir -p "$TMP/proj/.planning"
+(cd "$TMP/proj" && git init -q && git checkout -b feat/test -q 2>/dev/null && git config user.email t@t.com && git config user.name T)
+echo "x" > "$TMP/proj/file.txt"
+(cd "$TMP/proj" && git add file.txt && git commit -q -m "seed" 2>/dev/null)
+cat > "$TMP/proj/.planning/tracking.json" <<EOF
+{"phase":2,"phase_total":4,"tasks_done":3,"tasks_total":5}
+EOF
+# Touch a file so the diff has something
+echo "y" >> "$TMP/proj/file.txt"
+(cd "$TMP/proj" && HOME="$TMP" $NODE "$HOOKS_DIR/stop-session-log.js" >/dev/null 2>&1)
+assert_exit "with activity → exit 0" 0 $?
+TODAY=$(date -u +%Y-%m-%d)
+LOG_FILE="$TMP/.claude/knowledge/daily-log/$TODAY.md"
+if [ -f "$LOG_FILE" ] && grep -q "phase=2/4" "$LOG_FILE" && grep -q "tasks=3/5" "$LOG_FILE"; then
+  echo "  ✓ daily-log contains phase + tasks"
+  PASS=$((PASS + 1))
+else
+  echo "  ✗ daily-log missing or malformed: $(cat "$LOG_FILE" 2>/dev/null)"
+  FAIL=$((FAIL + 1))
+fi
+# Header is project name (basename of repo root)
+if [ -f "$LOG_FILE" ] && grep -q "^## proj$" "$LOG_FILE"; then
+  echo "  ✓ daily-log has project header"
+  PASS=$((PASS + 1))
+else
+  echo "  ✗ daily-log missing project header"
+  FAIL=$((FAIL + 1))
+fi
+rm -rf "$TMP"
+
+# Stop hook is idempotent within MIN_INTERVAL_MS — second run within 5min skips
+TMP=$(mktemp -d)
+mkdir -p "$TMP/proj/.planning" "$TMP/.claude"
+(cd "$TMP/proj" && git init -q && git checkout -b feat/x -q 2>/dev/null && git config user.email t@t.com && git config user.name T)
+echo "z" > "$TMP/proj/f.txt"
+(cd "$TMP/proj" && git add f.txt && git commit -q -m "s" 2>/dev/null)
+echo '{"phase":1,"phase_total":2,"tasks_done":1,"tasks_total":2}' > "$TMP/proj/.planning/tracking.json"
+echo "a" >> "$TMP/proj/f.txt"
+# First run — writes
+(cd "$TMP/proj" && HOME="$TMP" $NODE "$HOOKS_DIR/stop-session-log.js" >/dev/null 2>&1)
+LINES_BEFORE=$(wc -l < "$TMP/.claude/knowledge/daily-log/$(date -u +%Y-%m-%d).md" 2>/dev/null || echo 0)
+# Second run within 5min — must skip
+(cd "$TMP/proj" && HOME="$TMP" $NODE "$HOOKS_DIR/stop-session-log.js" >/dev/null 2>&1)
+LINES_AFTER=$(wc -l < "$TMP/.claude/knowledge/daily-log/$(date -u +%Y-%m-%d).md" 2>/dev/null || echo 0)
+if [ "$LINES_BEFORE" = "$LINES_AFTER" ]; then
+  echo "  ✓ second run within MIN_INTERVAL skips (no double-write)"
+  PASS=$((PASS + 1))
+else
+  echo "  ✗ second run wrote anyway ($LINES_BEFORE → $LINES_AFTER)"
+  FAIL=$((FAIL + 1))
+fi
+rm -rf "$TMP"
+
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1
