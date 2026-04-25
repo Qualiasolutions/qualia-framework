@@ -294,8 +294,12 @@ async function main() {
   const tmplDir = path.join(FRAMEWORK_DIR, "templates");
   const tmplDest = path.join(CLAUDE_DIR, "qualia-templates");
   if (!fs.existsSync(tmplDest)) fs.mkdirSync(tmplDest, { recursive: true });
+  // `knowledge/` is a sibling templates directory but installs to a different
+  // destination (~/.claude/knowledge/, not ~/.claude/qualia-templates/), so we
+  // skip it here and handle it in the dedicated "Knowledge layer" section below.
   for (const entry of fs.readdirSync(tmplDir, { withFileTypes: true })) {
     if (entry.name.startsWith(".")) continue;
+    if (entry.name === "knowledge") continue;
     const srcPath = path.join(tmplDir, entry.name);
     const destPath = path.join(tmplDest, entry.name);
     try {
@@ -308,6 +312,38 @@ async function main() {
       }
     } catch (e) {
       warn(`${entry.name} — ${e.message}`);
+    }
+  }
+
+  // ─── Knowledge layer (Karpathy-style raw → wiki memory tier) ──────
+  // Initializes ~/.claude/knowledge/ on first install. Never overwrites
+  // existing files — re-running the installer is safe for users who have
+  // already accumulated learnings.
+  printSection("Knowledge layer");
+  const knowledgeSrc = path.join(FRAMEWORK_DIR, "templates", "knowledge");
+  const knowledgeDest = path.join(CLAUDE_DIR, "knowledge");
+  if (!fs.existsSync(knowledgeDest)) fs.mkdirSync(knowledgeDest, { recursive: true });
+  const dailyLogDir = path.join(knowledgeDest, "daily-log");
+  if (!fs.existsSync(dailyLogDir)) {
+    fs.mkdirSync(dailyLogDir, { recursive: true });
+    ok("daily-log/ (created)");
+  } else {
+    log(`${DIM}daily-log/ (kept)${RESET}`);
+  }
+  if (fs.existsSync(knowledgeSrc)) {
+    for (const file of fs.readdirSync(knowledgeSrc)) {
+      const src = path.join(knowledgeSrc, file);
+      const dest = path.join(knowledgeDest, file);
+      try {
+        if (fs.existsSync(dest)) {
+          log(`${DIM}${file} (kept — user has customized)${RESET}`);
+        } else {
+          copy(src, dest);
+          ok(`${file} (initialized)`);
+        }
+      } catch (e) {
+        warn(`${file} — ${e.message}`);
+      }
     }
   }
 
@@ -613,6 +649,7 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
   const QUALIA_HOOK_SET = new Set([
     "session-start.js", "auto-update.js", "branch-guard.js", "pre-push.js",
     "pre-deploy-gate.js", "migration-guard.js", "pre-compact.js",
+    "git-guardrails.js", "stop-session-log.js",
   ]);
   const isQualiaHookCmd = (cmd) => {
     if (typeof cmd !== "string") return false;
@@ -635,6 +672,7 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
         matcher: "Bash",
         hooks: [
           { type: "command", command: nodeCmd("auto-update.js"), timeout: 5 },
+          { type: "command", command: nodeCmd("git-guardrails.js"), timeout: 5, statusMessage: "⬢ Checking git safety..." },
           { type: "command", if: "Bash(git push*)", command: nodeCmd("branch-guard.js"), timeout: 5, statusMessage: "⬢ Checking branch permissions..." },
           { type: "command", if: "Bash(git push*)", command: nodeCmd("pre-push.js"), timeout: 15, statusMessage: "⬢ Syncing tracking..." },
           { type: "command", if: "Bash(vercel --prod*)", command: nodeCmd("pre-deploy-gate.js"), timeout: 180, statusMessage: "⬢ Running quality gates..." },
@@ -652,6 +690,14 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
         matcher: "compact",
         hooks: [
           { type: "command", command: nodeCmd("pre-compact.js"), timeout: 15, statusMessage: "⬢ Saving state..." },
+        ],
+      },
+    ],
+    Stop: [
+      {
+        matcher: ".*",
+        hooks: [
+          { type: "command", command: nodeCmd("stop-session-log.js"), timeout: 5 },
         ],
       },
     ],
@@ -692,7 +738,7 @@ Client-specific preferences, design choices, and requirements. Loaded by \`/qual
 
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 
-  ok("Hooks: session-start, auto-update, branch-guard, pre-push, migration-guard, deploy-gate, pre-compact");
+  ok("Hooks: session-start, auto-update, branch-guard, pre-push, migration-guard, deploy-gate, pre-compact, git-guardrails, stop-session-log");
   ok("Status line + spinner configured");
   ok("Environment variables + permissions");
 

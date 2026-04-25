@@ -2567,12 +2567,12 @@ describe("install.js", () => {
     }
   });
 
-  it("7 hooks installed (block-env-edit removed in v3.2.0)", () => {
+  it("9 hooks installed (block-env-edit removed in v3.2.0; git-guardrails + stop-session-log added in v4.2.0)", () => {
     const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "qualia-install-"));
     try {
       runInstall("QS-FAWZI-01", tmpHome);
       const hooks = fs.readdirSync(path.join(tmpHome, ".claude", "hooks")).filter(f => f.endsWith(".js"));
-      assert.equal(hooks.length, 7);
+      assert.equal(hooks.length, 9);
     } finally {
       fs.rmSync(tmpHome, { recursive: true, force: true });
     }

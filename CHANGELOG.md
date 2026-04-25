@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Note: git tags for historical versions were not retained; commit references are approximate
 > and dates reflect commit history rather than npm publish timestamps.
 
+## [Unreleased] — v4.2.0 foundation
+
+**Memory-layer foundation + git guardrails + post-install diagnostic.** First slice of the v4.2.0 "Compound" milestone driven by the 2026-04-25 NotebookLM deep-dive on Anthropic's subagent upgrade, Karpathy's LLM knowledge bases, Cole Medin's parallel-worktree playbook, and the mattpocock skills directory. Lays the seed for the self-evolving memory layer that compounds across sessions.
+
+### Added
+
+- **`hooks/git-guardrails.js` — destructive-git hook (PreToolUse/Bash, applies to OWNER too).** Blocks: `git push --force` / `-f` to main/master (and any push from main/master while the current branch is main/master), `git reset --hard` while on main/master, `git clean -fd[x]`, `git branch -D main|master`, `rm -rf .git`. The safe variant `--force-with-lease` is allowed. Escape hatch: `QUALIA_ALLOW_DESTRUCTIVE=1` for genuine emergencies. Exits 2 with a clear reason and a remediation suggestion. Inspired by `mattpocock/skills/git-guardrails-claude-code` — guardrails are role-blind because force-pushing main is dangerous regardless of who you are.
+- **`hooks/stop-session-log.js` — Stop hook seeding the memory layer.** Appends one mechanical line per turn to `~/.claude/knowledge/daily-log/{YYYY-MM-DD}.md` (project, branch, phase, task counts, recent commit count, top-3 touched files). Rate-limited to one entry per 5 minutes per session, skipped entirely if there is no git activity AND no `.planning/tracking.json` progress to record. Never blocks — exits 0 even on internal failure. This is the **raw tier** of the planned Karpathy-style raw → wiki memory pipeline; v4.3.0 will add the LLM flush job that promotes daily-log entries into curated `concepts/` + `connections/` files.
+- **`templates/knowledge/agents.md` + `templates/knowledge/index.md` — Karpathy meta-doc + index entry point.** Installed once on first install (never overwrites existing user content) at `~/.claude/knowledge/`. `agents.md` describes the memory-layer architecture so subagents understand the system they're operating in (the "meta-reasoning" pattern from Karpathy's tweet + Cole Medin's implementation). `index.md` is the table-of-contents that future skills will hit first instead of catting individual files — fixes the v4.1.0 audit finding #3 ("11 of 14 knowledge files are invisible to every skill") by giving the agent a single deterministic entry point.
+- **`qualia-framework doctor` (aliases: `health`, `health-check`).** Post-install diagnostic that mirrors the spot-check run by `session-start.js` once per 24h, but on demand and with full surface coverage: critical files, all 9 hooks present, knowledge layer initialized, settings.json hook wiring complete (SessionStart + PreToolUse + PreCompact + Stop), config metadata recorded. Exits 0 if healthy, 1 with an itemized list of issues otherwise. Inspired by davila7/claude-code-templates' `--health-check`.
+
+### Changed
+
+- **`bin/install.js` wires the new hooks.** `git-guardrails.js` runs unconditionally on every Bash tool call (5s timeout, statusMessage `⬢ Checking git safety...`). `stop-session-log.js` runs on the new `Stop` hook event with a `.*` matcher. The `QUALIA_HOOK_SET` and `QUALIA_HOOK_FILES` lists in install.js + cli.js were updated so re-installs and uninstalls handle the new files cleanly. Hook count installed bumped 7 → 9 (test in `runner.js` updated accordingly).
+- **`bin/install.js` initializes the knowledge layer.** New "Knowledge layer" install section creates `~/.claude/knowledge/`, `~/.claude/knowledge/daily-log/`, and copies `templates/knowledge/{agents,index}.md` only if those exact files don't already exist on disk. Re-running the installer never overwrites accumulated user knowledge. The `templates/knowledge/` subdirectory is excluded from the regular `~/.claude/qualia-templates/` copy to avoid double-installation.
+
+### Notes
+
+This release ships the *foundation* for v4.2.0's headline feature — the self-evolving memory layer. The Stop hook starts capturing raw checkpoints today; the LLM flush job that promotes them into durable knowledge will land in v4.3.0 alongside `bin/knowledge.js` (the unified loader that replaces hardcoded `cat ~/.claude/knowledge/X.md` calls in skills, also v4.1.0 audit finding #3). The deep-dive synthesis that prompted this scope reorder lives in the conversation transcript that triggered the work — to be filed under `docs/research/2026-04-26-mastering-claude-code-notebook-synthesis.md` in a follow-up.
+
 ## [4.1.1] — 2026-04-22
 
 **Critical silent-fail hotfix.** Follow-up to the v4.1.0 audit (`FRAMEWORK_REVIEW.html`) which surfaced 142 findings across 4 dimensions. This release addresses the 5 highest-risk issues — each one previously let an operation fail silently or skip safety checks without telling the user. Subsequent releases (v4.2.0 structural, v4.3.0 harness patterns) will handle the remaining findings.

@@ -139,6 +139,8 @@ const QUALIA_HOOK_FILES = [
   "migration-guard.js",
   "pre-deploy-gate.js",
   "pre-compact.js",
+  "git-guardrails.js",
+  "stop-session-log.js",
 ];
 const QUALIA_LEGACY_HOOK_FILES = [
   "block-env-edit.js", // removed in v3.2.0
@@ -872,6 +874,113 @@ function cmdErpPing() {
   process.exit(1);
 }
 
+// ─── Doctor: post-install health check ───────────────────
+// Mirrors the spot-check that session-start.js runs once per 24h. Surfaces
+// missing files, mis-wired hooks, stale settings.json, and version drift.
+// Use whenever something feels off, before opening an issue, or after a
+// version upgrade. Exits 0 if healthy, 1 if any issue is found.
+function cmdDoctor() {
+  banner();
+  console.log("");
+
+  const issues = [];
+  const checks = [];
+
+  function check(label, ok, hint) {
+    checks.push({ label, ok, hint });
+    if (!ok) issues.push({ label, hint });
+  }
+
+  // ── Critical files (the same set session-start.js validates) ──
+  const criticalFiles = [
+    path.join(CLAUDE_DIR, "rules", "grounding.md"),
+    path.join(CLAUDE_DIR, "rules", "security.md"),
+    path.join(CLAUDE_DIR, "rules", "frontend.md"),
+    path.join(CLAUDE_DIR, "rules", "deployment.md"),
+    path.join(CLAUDE_DIR, "bin", "state.js"),
+    path.join(CLAUDE_DIR, "bin", "qualia-ui.js"),
+    path.join(CLAUDE_DIR, "bin", "statusline.js"),
+    path.join(CLAUDE_DIR, "CLAUDE.md"),
+    CONFIG_FILE,
+  ];
+  for (const f of criticalFiles) {
+    check(
+      `${path.relative(CLAUDE_DIR, f) || f}`,
+      fs.existsSync(f),
+      "run: npx qualia-framework@latest install",
+    );
+  }
+
+  // ── Hooks ─────────────────────────────────────────────
+  for (const h of QUALIA_HOOK_FILES) {
+    check(
+      `hooks/${h}`,
+      fs.existsSync(path.join(CLAUDE_DIR, "hooks", h)),
+      "reinstall: npx qualia-framework@latest install",
+    );
+  }
+
+  // ── Knowledge layer ────────────────────────────────────
+  const knowledgeFiles = [
+    path.join(CLAUDE_DIR, "knowledge", "agents.md"),
+    path.join(CLAUDE_DIR, "knowledge", "index.md"),
+    path.join(CLAUDE_DIR, "knowledge", "daily-log"),
+  ];
+  for (const f of knowledgeFiles) {
+    check(
+      `knowledge/${path.basename(f)}${fs.existsSync(f) && fs.statSync(f).isDirectory() ? "/" : ""}`,
+      fs.existsSync(f),
+      "reinstall to initialize the memory layer: npx qualia-framework@latest install",
+    );
+  }
+
+  // ── settings.json hook wiring ──────────────────────────
+  const settingsPath = path.join(CLAUDE_DIR, "settings.json");
+  if (fs.existsSync(settingsPath)) {
+    try {
+      const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+      const wantEvents = ["SessionStart", "PreToolUse", "PreCompact", "Stop"];
+      for (const ev of wantEvents) {
+        const blocks = (settings.hooks || {})[ev] || [];
+        const hasQualia = blocks.some((b) =>
+          (b.hooks || []).some((h) => typeof h.command === "string" && h.command.includes(".claude")),
+        );
+        check(`settings.json hooks.${ev}`, hasQualia, "reinstall to wire hooks");
+      }
+    } catch (e) {
+      check("settings.json parseable", false, e.message);
+    }
+  } else {
+    check("settings.json", false, "Claude Code never ran here? Open Claude once first");
+  }
+
+  // ── Version vs. installed ──────────────────────────────
+  const cfg = readConfig();
+  if (cfg.installed_at) {
+    check(`config installed_by=${cfg.installed_by || "?"} role=${cfg.role || "?"}`, true);
+  } else {
+    check("config has install metadata", false, "reinstall to record");
+  }
+
+  // ── Render ────────────────────────────────────────────
+  for (const c of checks) {
+    const mark = c.ok ? `${GREEN}✓${RESET}` : `${RED}✗${RESET}`;
+    console.log(`  ${mark} ${c.label}`);
+  }
+  console.log("");
+  if (issues.length === 0) {
+    console.log(`  ${GREEN}All checks passed. Framework is healthy.${RESET}`);
+    console.log("");
+    process.exit(0);
+  }
+  console.log(`  ${RED}${issues.length} issue${issues.length === 1 ? "" : "s"} found:${RESET}`);
+  for (const i of issues) {
+    console.log(`  ${DIM}•${RESET} ${i.label}${i.hint ? ` ${DIM}— ${i.hint}${RESET}` : ""}`);
+  }
+  console.log("");
+  process.exit(1);
+}
+
 function cmdHelp() {
   banner();
   console.log("");
@@ -884,7 +993,8 @@ function cmdHelp() {
   console.log(`    qualia-framework ${TEAL}team${RESET}         Manage team members (${DIM}list|add|remove${RESET})`);
   console.log(`    qualia-framework ${TEAL}traces${RESET}       View recent hook telemetry`);
   console.log(`    qualia-framework ${TEAL}analytics${RESET}    Show outcome scoring & gap cycle stats`);
-  console.log(`    qualia-framework ${TEAL}erp-ping${RESET}     Verify ERP connectivity + API key`);
+  console.log(`    qualia-framework ${TEAL}erp-ping${RESET}     Verify ERP connectivity + API key
+    qualia-framework ${TEAL}doctor${RESET}       Health-check the install (files, hooks, settings)`);
   console.log("");
   console.log(`  ${WHITE}After install:${RESET}`);
   console.log(`    ${TG}/qualia${RESET}          What should I do next?`);
@@ -940,6 +1050,11 @@ switch (cmd) {
   case "erp-ping":
   case "ping":
     cmdErpPing();
+    break;
+  case "doctor":
+  case "health":
+  case "health-check":
+    cmdDoctor();
     break;
   default:
     cmdHelp();
