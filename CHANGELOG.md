@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Note: git tags for historical versions were not retained; commit references are approximate
 > and dates reflect commit history rather than npm publish timestamps.
 
+## [Unreleased] — v4.2.0 phase 2 (knowledge loader)
+
+**Unified knowledge loader + builder/skill rewiring.** Builds on the v4.2.0 foundation by introducing `bin/knowledge.js`, a single entry point for the memory layer that replaces the scattered `cat ~/.claude/knowledge/X.md` calls in skills. Directly resolves v4.1.0 audit finding #3 ("11 of 14 knowledge files are invisible to every skill") and audit finding #2 ("Builder agent never reads knowledge").
+
+### Added
+
+- **`bin/knowledge.js` — unified memory-layer loader.** Subcommands: `load <file>` (with friendly aliases: `patterns`, `fixes`, `client`, or any bare filename), `list` (table of all files with size + mtime), `search <query>` (grep across the entire knowledge tree, including `daily-log/`), `append --type <pattern|fix|client> --title <T> --body <B> [--project <P>] [--context <C>]` (replaces ad-hoc `echo >> file` patterns in `qualia-learn`), `path <file>` (absolute path resolution without read), `help`. Default invocation with no arguments prints `index.md` — the entry point. Unknown commands fall through to `load` so `knowledge.js patterns` is a valid shorthand. Every command exits 0 even when files are missing — prints a `(no entries)` stub so skills can pipe output into prompts without breaking on a fresh install.
+- **Builder agent now reads knowledge before writing code** (`agents/builder.md`). New section 2b "Load Relevant Knowledge" instructs the builder to call `node ~/.claude/bin/knowledge.js` to discover the index, then `load supabase-patterns` / `load patterns` / `load fixes` / `load client` based on the task at hand. Hardcoded `cat` is forbidden — the loader is the only sanctioned path. Closes audit finding #2 (the most-flagged miss in the v4.1.0 review).
+- **`doctor` checks `bin/knowledge.js`** alongside the other critical bin files. Stale installs that pre-date v4.2.0 phase 2 are flagged in the diagnostic with the exact reinstall command.
+
+### Changed
+
+- **`bin/install.js` copies `knowledge.js` to `~/.claude/bin/`** alongside `state.js`, `qualia-ui.js`, `statusline.js`, and chmods it executable. `QUALIA_BIN_FILES` in `bin/cli.js` updated so uninstall removes it cleanly.
+- **`/qualia-learn` rewritten to use the loader** (`skills/qualia-learn/SKILL.md`). The duplicate-detection step now calls `knowledge.js search` instead of `grep -i ... ~/.claude/knowledge/{type}.md`. The append step calls `knowledge.js append --type pattern --title ...` — no manual ID generation, no shell-escaping concerns, no risk of writing to the wrong file. The "Reading Knowledge" section now documents the loader explicitly and calls out hardcoded `cat` as the audit-flagged anti-pattern it is.
+- **`/qualia-debug`, `/qualia-plan`, `/qualia-new`, `/qualia-review` rewritten to use the loader.** Five hardcoded `cat ~/.claude/knowledge/*.md` calls across the four skills now go through `node ~/.claude/bin/knowledge.js load <alias>` or `search <query>`. Newly-added knowledge files (e.g. a future `voice-agent-patterns.md` from `/qualia-learn`) are now reachable to every skill via the index — no more invisible files.
+
+### Notes
+
+The loader is intentionally minimal: pure Node.js, zero dependencies, ~210 lines including help text. It does **not** implement the LLM-driven flush job that promotes `daily-log/*` entries into curated `concepts/` + `connections/` files — that lands in v4.2.0 phase 3 alongside the forked-subagent wiring. This release is the deterministic, mechanical layer underneath that future LLM layer.
+
 ## [Unreleased] — v4.2.0 foundation
 
 **Memory-layer foundation + git guardrails + post-install diagnostic.** First slice of the v4.2.0 "Compound" milestone driven by the 2026-04-25 NotebookLM deep-dive on Anthropic's subagent upgrade, Karpathy's LLM knowledge bases, Cole Medin's parallel-worktree playbook, and the mattpocock skills directory. Lays the seed for the self-evolving memory layer that compounds across sessions.

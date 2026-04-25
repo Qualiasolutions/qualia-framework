@@ -54,49 +54,45 @@ What did you learn?
 
 ### 2. Check for Duplicates
 
-Before saving, check if a similar entry already exists:
+Before saving, search the existing knowledge for a similar entry. Use the
+unified loader, **never** raw `cat` or `grep` directly — the loader handles
+missing-file edge cases and stays consistent across skills.
 
 ```bash
-# Search for the title (case-insensitive substring match)
-grep -i "{title keywords}" ~/.claude/knowledge/{type}.md 2>/dev/null
+node ~/.claude/bin/knowledge.js search "{title keywords}"
 ```
 
-If a near-match exists (title is similar to an existing entry):
+If a near-match exists:
 - Show the existing entry to the user
 - Ask: "A similar entry exists. Update it, create a new one, or skip?"
-- If update: replace the existing entry. If new: append. If skip: done.
+- If update: edit the file directly (find the entry by `**ID:**` line). If
+  new: continue to step 3. If skip: done.
 
-### 3. Format Entry
+### 3. Append the Entry
 
-Each entry gets a unique ID and ISO timestamp for dedup and ordering:
-
-```markdown
-
----
-
-### {Title}
-**ID:** {random 8-char hex, e.g. a3f7c1e9}
-**Date:** {ISO 8601, e.g. 2026-04-11}
-**Project:** {current project name or "general"}
-**Context:** {brief context — what you were building when you learned this}
-
-{The learning — be specific enough that future-you understands without context}
-```
-
-### 4. Append to Knowledge File
-
-Append-only — never overwrite the file, always add at the end:
+The loader's `append` subcommand handles ID generation, ISO date, project
+detection, and the canonical entry format — one call, no shell escaping
+concerns:
 
 ```bash
-# Append to the right file
-echo "{formatted entry}" >> ~/.claude/knowledge/{type}.md
+node ~/.claude/bin/knowledge.js append \
+  --type {pattern|fix|client} \
+  --title "{Title}" \
+  --body "{The learning — be specific enough that future-you understands without context}" \
+  --project "{current project name or 'general'}" \
+  --context "{brief context — what you were building when you learned this}"
 ```
 
-- Pattern → `~/.claude/knowledge/learned-patterns.md`
-- Fix → `~/.claude/knowledge/common-fixes.md`
-- Client pref → `~/.claude/knowledge/client-prefs.md`
+Type → file mapping (handled by the loader):
+- `pattern` → `learned-patterns.md`
+- `fix`     → `common-fixes.md`
+- `client`  → `client-prefs.md`
 
-### 5. Confirm
+The loader prints `appended {id} to {file}` on success. If the destination
+file does not exist, the loader creates it with a header — you do not need
+to bootstrap it.
+
+### 4. Confirm
 
 ```
 ⬢ Saved to {file}
@@ -105,13 +101,27 @@ echo "{formatted entry}" >> ~/.claude/knowledge/{type}.md
 
 ## Reading Knowledge
 
-Skills can read knowledge files for context:
+**Always use the loader.** Hardcoded `cat ~/.claude/knowledge/X.md` is an
+anti-pattern — it makes new files invisible (this was v4.1.0 audit finding
+#3). The loader, by contrast, lets agents discover available knowledge via
+the index.
+
 ```bash
-cat ~/.claude/knowledge/learned-patterns.md 2>/dev/null
-cat ~/.claude/knowledge/common-fixes.md 2>/dev/null
-cat ~/.claude/knowledge/client-prefs.md 2>/dev/null
+# Print the index (entry point — read this first)
+node ~/.claude/bin/knowledge.js
+
+# Print a specific file (accepts aliases: patterns, fixes, client)
+node ~/.claude/bin/knowledge.js load patterns
+node ~/.claude/bin/knowledge.js load common-fixes.md
+
+# List everything available
+node ~/.claude/bin/knowledge.js list
+
+# Search across all files
+node ~/.claude/bin/knowledge.js search "RLS"
 ```
 
-The `/qualia-debug` skill should check `common-fixes.md` before investigating.
-The `/qualia-new` skill should check `client-prefs.md` when setting up client projects.
-The `/qualia-plan` skill should check `learned-patterns.md` when planning phases.
+The `/qualia-debug` skill should check `common-fixes.md` (`load fixes`) before
+investigating. The `/qualia-new` skill should check `client-prefs.md`
+(`load client`) when setting up client projects. The `/qualia-plan` skill
+should check `learned-patterns.md` (`load patterns`) when planning phases.

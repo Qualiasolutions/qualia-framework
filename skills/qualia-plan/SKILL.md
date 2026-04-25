@@ -33,8 +33,9 @@ Spawn a planner agent to break the current phase into executable tasks, then val
 cat .planning/STATE.md 2>/dev/null
 cat .planning/ROADMAP.md 2>/dev/null
 cat .planning/PROJECT.md 2>/dev/null
-cat ~/.claude/knowledge/learned-patterns.md 2>/dev/null
-cat ~/.claude/knowledge/client-prefs.md 2>/dev/null
+node ~/.claude/bin/knowledge.js
+node ~/.claude/bin/knowledge.js load patterns
+node ~/.claude/bin/knowledge.js load client
 ```
 
 If no phase number given, use the current phase from STATE.md.

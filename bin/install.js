@@ -410,6 +410,12 @@ async function main() {
       path.join(binDest, "statusline.js")
     );
     ok("statusline.js (status bar renderer)");
+    copy(
+      path.join(FRAMEWORK_DIR, "bin", "knowledge.js"),
+      path.join(binDest, "knowledge.js")
+    );
+    fs.chmodSync(path.join(binDest, "knowledge.js"), 0o755);
+    ok("knowledge.js (memory-layer loader)");
   } catch (e) {
     warn(`scripts — ${e.message}`);
   }
