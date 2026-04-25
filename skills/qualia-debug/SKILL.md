@@ -40,7 +40,7 @@ node ~/.claude/bin/qualia-ui.js banner debug
 ### 2. Check Known Fixes First (cheap)
 
 ```bash
-cat ~/.claude/knowledge/common-fixes.md 2>/dev/null | grep -i "{symptom_keywords}"
+node ~/.claude/bin/knowledge.js search "{symptom_keywords}"
 ```
 
 If a known fix matches, apply it and jump to step 5 (verify). Known fixes are pre-verified patterns — no need to re-investigate.

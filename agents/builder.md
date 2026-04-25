@@ -42,6 +42,34 @@ Parse every field in your task block:
 For every file you're about to modify — read it first. No exceptions.
 For every `@file` reference in Context — read it now.
 
+### 2b. Load Relevant Knowledge
+
+Before writing code, check the memory layer for prior decisions and known
+fixes that apply to this task. Hardcoded `cat ~/.claude/knowledge/X.md` is
+forbidden — always go through the loader so newly-added knowledge files
+become reachable automatically:
+
+```bash
+# Always — read the index to discover what's available
+node ~/.claude/bin/knowledge.js
+
+# If your task touches Supabase/auth/RLS:
+node ~/.claude/bin/knowledge.js load supabase-patterns
+node ~/.claude/bin/knowledge.js load patterns
+
+# If you're fixing a bug or hitting a familiar error, check known fixes:
+node ~/.claude/bin/knowledge.js load fixes
+node ~/.claude/bin/knowledge.js search "{error keyword}"
+
+# For client-specific work (project name appears in PROJECT.md):
+node ~/.claude/bin/knowledge.js load client
+```
+
+If a relevant entry exists, follow it (or note in your DONE message that
+you deviated and why). If nothing matches, proceed normally — the loader
+prints `(no entries in X — use /qualia-learn to add one)` for missing files,
+which is fine and means there is nothing to apply yet.
+
 ### 3. Build It
 - Follow the Action exactly as specified
 - Keep every Acceptance Criterion in mind — you are building toward observable user behaviors, not just files

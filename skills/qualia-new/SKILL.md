@@ -94,7 +94,7 @@ Plus free-text: "Any brand colors or reference sites I should look at?"
 
 If client, ask name. Check saved prefs:
 ```bash
-cat ~/.claude/knowledge/client-prefs.md 2>/dev/null | grep -A 10 "{client name}"
+node ~/.claude/bin/knowledge.js search "{client name}"
 ```
 
 ### Step 5. Write PROJECT.md

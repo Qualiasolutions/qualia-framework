@@ -29,8 +29,9 @@ node ~/.claude/bin/qualia-ui.js banner review
 ### 0. Load Context
 
 ```bash
-cat ~/.claude/knowledge/common-fixes.md 2>/dev/null
-cat ~/.claude/knowledge/learned-patterns.md 2>/dev/null
+node ~/.claude/bin/knowledge.js
+node ~/.claude/bin/knowledge.js load fixes
+node ~/.claude/bin/knowledge.js load patterns
 ```
 
 Detect project shape:

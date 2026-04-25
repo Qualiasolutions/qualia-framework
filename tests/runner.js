@@ -2536,7 +2536,12 @@ describe("install.js", () => {
       assert.ok(fs.existsSync(path.join(tmpHome, ".claude", "bin", "state.js")));
       assert.ok(fs.existsSync(path.join(tmpHome, ".claude", "bin", "qualia-ui.js")));
       assert.ok(fs.existsSync(path.join(tmpHome, ".claude", "bin", "statusline.js")));
+      assert.ok(fs.existsSync(path.join(tmpHome, ".claude", "bin", "knowledge.js")));
       assert.ok(fs.existsSync(path.join(tmpHome, ".claude", ".qualia-config.json")));
+      // v4.2.0 — knowledge layer must be initialized
+      assert.ok(fs.existsSync(path.join(tmpHome, ".claude", "knowledge", "agents.md")));
+      assert.ok(fs.existsSync(path.join(tmpHome, ".claude", "knowledge", "index.md")));
+      assert.ok(fs.existsSync(path.join(tmpHome, ".claude", "knowledge", "daily-log")));
     } finally {
       fs.rmSync(tmpHome, { recursive: true, force: true });
     }

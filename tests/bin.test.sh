@@ -476,10 +476,11 @@ else
   fail_case "CLAUDE.md role substitution"
 fi
 
-# 31. All 8 hooks installed
+# 31. All 9 hooks installed (block-env-edit removed in v3.2.0;
+# git-guardrails + stop-session-log added in v4.2.0)
 HOOK_COUNT=$(ls "$TMP/.claude/hooks/"*.js 2>/dev/null | wc -l)
-if [ "$HOOK_COUNT" -eq 8 ]; then
-  pass "8 hooks installed in hooks/"
+if [ "$HOOK_COUNT" -eq 9 ]; then
+  pass "9 hooks installed in hooks/"
 else
   fail_case "hook count" "got $HOOK_COUNT"
 fi
@@ -488,22 +489,24 @@ fi
 if [ -f "$TMP/.claude/settings.json" ] \
    && grep -q '"SessionStart"' "$TMP/.claude/settings.json" \
    && grep -q '"PreToolUse"' "$TMP/.claude/settings.json" \
+   && grep -q '"Stop"' "$TMP/.claude/settings.json" \
    && grep -q '"statusLine"' "$TMP/.claude/settings.json"; then
-  pass "settings.json has SessionStart, PreToolUse, statusLine"
+  pass "settings.json has SessionStart, PreToolUse, Stop, statusLine"
 else
   fail_case "settings.json contents"
 fi
 
-# 33. settings.json contains all 8 hooks wired correctly
-if grep -q 'block-env-edit.js' "$TMP/.claude/settings.json" \
-   && grep -q 'branch-guard.js' "$TMP/.claude/settings.json" \
+# 33. settings.json contains all 9 hooks wired correctly
+if grep -q 'branch-guard.js' "$TMP/.claude/settings.json" \
    && grep -q 'migration-guard.js' "$TMP/.claude/settings.json" \
    && grep -q 'pre-push.js' "$TMP/.claude/settings.json" \
    && grep -q 'pre-deploy-gate.js' "$TMP/.claude/settings.json" \
    && grep -q 'auto-update.js' "$TMP/.claude/settings.json" \
    && grep -q 'session-start.js' "$TMP/.claude/settings.json" \
-   && grep -q 'pre-compact.js' "$TMP/.claude/settings.json"; then
-  pass "settings.json has all 8 hooks wired"
+   && grep -q 'pre-compact.js' "$TMP/.claude/settings.json" \
+   && grep -q 'git-guardrails.js' "$TMP/.claude/settings.json" \
+   && grep -q 'stop-session-log.js' "$TMP/.claude/settings.json"; then
+  pass "settings.json has all 9 hooks wired"
 else
   fail_case "settings.json missing hooks"
 fi
@@ -680,6 +683,140 @@ if grep -q "\"version\": \"$PKG_VERSION\"" "$TMP/.claude/.qualia-config.json"; t
   pass "config version matches package.json ($PKG_VERSION)"
 else
   fail_case "config version mismatch"
+fi
+
+echo ""
+echo "--- knowledge.js (memory-layer loader) ---"
+
+KN="$FRAMEWORK_DIR/bin/knowledge.js"
+
+# 48. Help
+EXIT=0; OUT=$($NODE "$KN" help 2>&1) || EXIT=$?
+if [ "$EXIT" -eq 0 ] && echo "$OUT" | grep -q "knowledge.js"; then
+  pass "help prints usage"
+else
+  fail_case "help" "exit=$EXIT"
+fi
+
+# 49. Default (no args) → "no entries" stub on fresh install, exit 0
+TMP=$(mktmp)
+EXIT=0; OUT=$(HOME="$TMP" $NODE "$KN" 2>&1) || EXIT=$?
+if [ "$EXIT" -eq 0 ] && echo "$OUT" | grep -q "no entries"; then
+  pass "default → exits 0 with stub on fresh install"
+else
+  fail_case "default no init" "exit=$EXIT"
+fi
+
+# 50. With initialized index → returns content
+TMP=$(mktmp)
+mkdir -p "$TMP/.claude/knowledge"
+echo "# Test Index" > "$TMP/.claude/knowledge/index.md"
+EXIT=0; OUT=$(HOME="$TMP" $NODE "$KN" 2>&1) || EXIT=$?
+if [ "$EXIT" -eq 0 ] && echo "$OUT" | grep -q "Test Index"; then
+  pass "default → prints index.md when present"
+else
+  fail_case "default with index" "exit=$EXIT"
+fi
+
+# 51. load <alias> resolves to mapped filename
+TMP=$(mktmp)
+mkdir -p "$TMP/.claude/knowledge"
+echo "# Patterns" > "$TMP/.claude/knowledge/learned-patterns.md"
+EXIT=0; OUT=$(HOME="$TMP" $NODE "$KN" load patterns 2>&1) || EXIT=$?
+if [ "$EXIT" -eq 0 ] && echo "$OUT" | grep -q "# Patterns"; then
+  pass "load patterns → learned-patterns.md"
+else
+  fail_case "load alias" "exit=$EXIT"
+fi
+
+# 52. load <missing-file> → "no entries" stub, exit 0
+TMP=$(mktmp)
+mkdir -p "$TMP/.claude/knowledge"
+EXIT=0; OUT=$(HOME="$TMP" $NODE "$KN" load fixes 2>&1) || EXIT=$?
+if [ "$EXIT" -eq 0 ] && echo "$OUT" | grep -q "no entries"; then
+  pass "load missing → exit 0 with stub (skill-pipeable)"
+else
+  fail_case "load missing" "exit=$EXIT"
+fi
+
+# 53. append a pattern → entry lands on disk
+TMP=$(mktmp)
+EXIT=0; OUT=$(HOME="$TMP" $NODE "$KN" append --type pattern --title "RLS rule" --body "Add RLS in same migration as table" 2>&1) || EXIT=$?
+if [ "$EXIT" -eq 0 ] && echo "$OUT" | grep -q "appended"; then
+  pass "append pattern → exit 0 with confirmation"
+else
+  fail_case "append pattern" "exit=$EXIT"
+fi
+if [ -f "$TMP/.claude/knowledge/learned-patterns.md" ] \
+   && grep -q "### RLS rule" "$TMP/.claude/knowledge/learned-patterns.md" \
+   && grep -q "Add RLS in same migration" "$TMP/.claude/knowledge/learned-patterns.md"; then
+  pass "appended entry has title + body"
+else
+  fail_case "append content"
+fi
+
+# 54. append without --title → exit 1
+EXIT=0; HOME="$TMP" $NODE "$KN" append --type pattern --body "x" >/dev/null 2>&1 || EXIT=$?
+if [ "$EXIT" -eq 1 ]; then
+  pass "append missing --title → exit 1"
+else
+  fail_case "append missing title" "exit=$EXIT"
+fi
+
+# 55. append with bad type → exit 1
+EXIT=0; HOME="$TMP" $NODE "$KN" append --type bogus --title T --body B >/dev/null 2>&1 || EXIT=$?
+if [ "$EXIT" -eq 1 ]; then
+  pass "append bad --type → exit 1"
+else
+  fail_case "append bad type" "exit=$EXIT"
+fi
+
+# 56. search finds an appended entry
+TMP=$(mktmp)
+HOME="$TMP" $NODE "$KN" append --type fix --title "Vercel build crash" --body "use node 20.x in package.json engines" >/dev/null 2>&1
+EXIT=0; OUT=$(HOME="$TMP" $NODE "$KN" search "Vercel" 2>&1) || EXIT=$?
+if [ "$EXIT" -eq 0 ] && echo "$OUT" | grep -q "Vercel"; then
+  pass "search finds appended entries"
+else
+  fail_case "search appended" "exit=$EXIT"
+fi
+
+# 57. search with no matches → "no matches" stub, exit 0
+EXIT=0; OUT=$(HOME="$TMP" $NODE "$KN" search "xyzzy_nonexistent_12345" 2>&1) || EXIT=$?
+if [ "$EXIT" -eq 0 ] && echo "$OUT" | grep -q "no matches"; then
+  pass "search no matches → exit 0 with stub"
+else
+  fail_case "search no matches" "exit=$EXIT"
+fi
+
+# 58. list shows existing files
+TMP=$(mktmp)
+mkdir -p "$TMP/.claude/knowledge"
+echo "x" > "$TMP/.claude/knowledge/foo.md"
+EXIT=0; OUT=$(HOME="$TMP" $NODE "$KN" list 2>&1) || EXIT=$?
+if [ "$EXIT" -eq 0 ] && echo "$OUT" | grep -q "foo.md"; then
+  pass "list shows existing files"
+else
+  fail_case "list" "exit=$EXIT"
+fi
+
+# 59. unknown command falls through to load (`knowledge.js patterns` shorthand)
+TMP=$(mktmp)
+mkdir -p "$TMP/.claude/knowledge"
+echo "# Patterns content" > "$TMP/.claude/knowledge/learned-patterns.md"
+EXIT=0; OUT=$(HOME="$TMP" $NODE "$KN" patterns 2>&1) || EXIT=$?
+if [ "$EXIT" -eq 0 ] && echo "$OUT" | grep -q "# Patterns content"; then
+  pass "unknown command → falls through to load"
+else
+  fail_case "fallthrough" "exit=$EXIT"
+fi
+
+# 60. path command resolves alias to absolute path (no read)
+EXIT=0; OUT=$($NODE "$KN" path patterns 2>&1) || EXIT=$?
+if [ "$EXIT" -eq 0 ] && echo "$OUT" | grep -q "learned-patterns.md"; then
+  pass "path resolves alias to filename"
+else
+  fail_case "path" "exit=$EXIT"
 fi
 
 echo ""

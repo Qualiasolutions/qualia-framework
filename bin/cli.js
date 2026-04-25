@@ -159,7 +159,7 @@ const QUALIA_AGENT_FILES = [
 ];
 
 // 3 Qualia bin scripts.
-const QUALIA_BIN_FILES = ["state.js", "qualia-ui.js", "statusline.js"];
+const QUALIA_BIN_FILES = ["state.js", "qualia-ui.js", "statusline.js", "knowledge.js"];
 
 // 5 Qualia rules.
 const QUALIA_RULE_FILES = ["security.md", "frontend.md", "design-reference.md", "deployment.md", "infrastructure.md"];
@@ -900,6 +900,7 @@ function cmdDoctor() {
     path.join(CLAUDE_DIR, "bin", "state.js"),
     path.join(CLAUDE_DIR, "bin", "qualia-ui.js"),
     path.join(CLAUDE_DIR, "bin", "statusline.js"),
+    path.join(CLAUDE_DIR, "bin", "knowledge.js"),
     path.join(CLAUDE_DIR, "CLAUDE.md"),
     CONFIG_FILE,
   ];
